@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#  This file is part of "oilliocp"
+#  This file is part of "Jose"
 #
 #  mand is a Django based management interface for MySQL users and databases.
 #
-#  Copyright 2013 TACT Communications
+#  Copyright 2013 LaFoglia
 #
 #  Licensed under the Simplified BSD License;
 #  you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ from setuptools import setup
 
 # - Meta Info
 
-from oilliocp import get_version
+from Jose import get_version
 
 SCRIPTS=glob.glob('src/scripts/*.py')
 try:
