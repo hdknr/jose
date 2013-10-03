@@ -1,0 +1,17 @@
+Django
+MySQL-python
+Sphinx
+Werkzeug
+south
+libsass
+django_compressor
+jcconv
+django-extensions
+PIL
+requests
+furl
+pysqlite
+pykf
+Markdown
+ordereddict
+pwgen
