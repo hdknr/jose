@@ -53,7 +53,7 @@ from setuptools import setup
 
 # - Meta Info
 
-from Jose import get_version
+from jose import get_version
 
 SCRIPTS=glob.glob('src/scripts/*.py')
 try:
