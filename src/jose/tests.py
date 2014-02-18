@@ -16,5 +16,23 @@ class TestBase64(unittest.TestCase):
             '=',
             base64.base64url_decode(base64.base64url_encode('=')))
 
+
+class TestJwk(unittest.TestCase):
+    def test_serialize(self):
+        data = ''' { "kty":"RSA" } '''
+
+        from jose.jwk import Jwk
+        from jose.jwa.keys import KeyType
+
+        jwk = Jwk.from_json(data)
+        self.assertEquals(jwk.kty, KeyType.RSA)
+        self.assertIsNone(jwk.use)
+
+        data = jwk.to_json()
+        jwk2 = Jwk.from_json(data)
+        self.assertEquals(jwk.kty, jwk2.kty)
+        self.assertEquals(jwk.use, jwk2.use)
+
+
 if __name__ == '__main__':
     unittest.main()

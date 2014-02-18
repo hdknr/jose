@@ -1,42 +1,57 @@
-from configurations import  configuration
+import json
+from jose import BaseEnum, BaseObject
+from jwa import keys    # , Algorithm
 #
-class RSA:
-    class OtherPrime:
-        r = ""
-        d = ""
-        t = ""
 
-    n   = ""
-    e   = ""
-    p   = ""
-    q   = ""
-    dp  = ""
-    dq  = ""
-    qi  = ""
-    oth = None  #: List of OtherPrime
 
-class EC:
-    crt =""
-    x   =""
-    y   =""
+class Use(BaseEnum):
+    sig = 'sign'
+    enc = 'enc'
 
-class Jwk(RSA,EC):
-    kty=""
-    use=""
-    alg=""
-    kid=""
-    d  =""     #: Private Key(EC) , Private Exponent(RSA)
-    k  =""     #: shared key
 
-class JwkSet:
+class KeyOperation(BaseEnum):
+    sign = 'sign'
+    verify = 'verify'
+    encrypt = 'encrypt'
+    decrypt = 'decrypt'
+    wrap = 'wrapKey'
+    unwrap = 'unwrapKey'
+    deriveKey = 'deriveKey'
+    deriveBits = 'deriveBits'
+
+
+class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
+    kty = None      #: jwa.keys.KeyType
+    use = None      #: Use instance
+    key_ops = []    #: array of KeyOperation
+    alg = None      #: jwa.Algorithm to generate a private key
+    kid = ""        #: Key ID
+    x5u = ""        #: X.509 Url
+    x5c = []        #: X.509 Chain
+    x5t = ""        #: X.509 Thumprint
+
+    @classmethod
+    def from_json(cls, json_str):
+        obj = type('', (cls, ), json.loads(json_str))()
+        obj.kty = keys.KeyType.create(obj.kty)
+        obj.use = Use.create(obj.use)
+
+        return obj
+
+
+class JwkSet(BaseObject):
+    keys = []   #: List of Jwk (Section 4.1)
+
     def save(self):
         pass
 
-class JwkPair:
+
+class JwkPair(BaseObject):
     @classmethod
-    def create_rsa_pair(bits = 2048):
+    def create_rsa_pair(bits=2048):
         return JwkPair()
 
-class JwkPairSet:
-    def __init__(self,entity_id):
-        self.entity_id = entity_id 
+
+class JwkPairSet(BaseObject):
+    def __init__(self, entity_id):
+        self.entity_id = entity_id

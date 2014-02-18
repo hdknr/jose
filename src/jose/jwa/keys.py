@@ -1,12 +1,24 @@
 from jose import BaseEnum
-#
 
+# kty
 
-class KeyType(BaseEnum):
-    ''' Key Type : JWA Section 6.1 '''
-    EC = 'EC'
-    RSA = 'RSA'
-    oct = 'oct'
+KeyTypes = dict(
+    EC='EC',
+    RSA='RSA',
+    OCT='oct',
+)
+
+KeyType = type('KeyType', (BaseEnum,), KeyTypes)
+
+# crv
+
+Curves = dict(
+    P_256='P-256',
+    P_384='P-384',
+    P_521='P-521',
+)
+
+Curve = type('Curve', (BaseEnum,), Curves)
 
 
 class RSA(object):
@@ -29,7 +41,7 @@ class RSA(object):
 
 
 class EC(object):
-    crv = ""    #: Curve
+    crv = ""    #: jwa.Curve
     x = ""      #: X Coordinate
     y = ""      #: Y Coordinate
     d = ""      #: ECC Private Key

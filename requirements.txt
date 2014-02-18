@@ -8,3 +8,4 @@ furl
 ordereddict
 jsonpickle
 M2Crypto
+enum34

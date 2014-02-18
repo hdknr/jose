@@ -1,11 +1,8 @@
+from jose import AlgorithmBaseEnum
+from encs import KeyEncs
+from sigs import Sigs
 
-class Singer:
-    pass
+__all__ = ['Algorithm', ]
 
-class KeyEncryptor:
-    pass
-
-class ContentEncryptor:
-    pass
-
-
+# alg
+Algorithm = type('Algorithm', (AlgorithmBaseEnum,), dict(Sigs, **KeyEncs))
