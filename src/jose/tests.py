@@ -34,5 +34,39 @@ class TestJwk(unittest.TestCase):
         self.assertEquals(jwk.use, jwk2.use)
 
 
+class TestCrypto(unittest.TestCase):
+    def test_pattern(self):
+        from jws import _compact as jws
+        from jwe import _compact as jwe
+
+        self.assertIsNotNone(jws.search('aaaa.bbb.ccc'))
+        self.assertIsNotNone(jwe.search('aaaa.bbb.ccc.ddd.eee'))
+
+
+class TestJws(unittest.TestCase):
+    def test_compact(self):
+        #: http://tools.ietf.org/html/
+        #:  draft-ietf-jose-json-web-signature-21#section-3.1
+
+        data = ".".join([
+            'eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9',
+            'eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAs' +
+            'DQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ',
+            'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
+        ])
+
+        from jws import JwsMessage
+        from jwa.sigs import Signature
+        msg = JwsMessage.from_token(data)
+        self.assertIsNotNone(msg)
+        self.assertIsNotNone(msg.jws_list)
+        self.assertEqual(len(msg.jws_list), 1)
+
+        jws0 = msg.jws_list[0]
+        self.assertEqual(jws0.typ, 'JWT')
+        self.assertEqual(jws0.alg, Signature.HS256)
+
+        print msg.to_json()
+
 if __name__ == '__main__':
     unittest.main()

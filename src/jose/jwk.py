@@ -1,4 +1,3 @@
-import json
 from jose import BaseEnum, BaseObject
 from jwa import keys    # , Algorithm
 #
@@ -31,10 +30,14 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
     x5t = ""        #: X.509 Thumprint
 
     @classmethod
-    def from_json(cls, json_str):
-        obj = type('', (cls, ), json.loads(json_str))()
+    def from_json(cls, json_str, base=None):
+        obj = BaseObject.from_json(json_str, cls)
         obj.kty = keys.KeyType.create(obj.kty)
         obj.use = Use.create(obj.use)
+        if isinstance(obj.key_ops, list):
+            obj.key_ops = [KeyOperation(**ops)
+                           for ops in obj.key_ops
+                           if isinstance(ops, dict)]
 
         return obj
 

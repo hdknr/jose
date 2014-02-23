@@ -43,11 +43,19 @@ class BaseObjectSerializer(json.JSONEncoder):
 
 
 class BaseObject(object):
-    serializer = BaseObjectSerializer
+    _serializer = BaseObjectSerializer
+
+    def __init__(*args, **kwargs):
+        pass
 
     def to_json(self, *args, **kwargs):
-        kwargs['cls'] = self.serializer
+        kwargs['cls'] = self._serializer    #: Custom Serializer
         return json.dumps(self, *args, **kwargs)
+
+    @classmethod
+    def from_json(cls, json_str, base=None):
+        obj = type('', (base or cls, ), json.loads(json_str))()
+        return obj
 
 
 class AlgorithmBaseEnum(BaseEnum):
