@@ -1,11 +1,12 @@
 from crypto import Crypto
 from jose import BaseObject, base64
-from jwa.sigs import Signature
+from jwa.sigs import SigEnum
 import re
 import traceback
+import copy
 
 _component = [
-    r'^(?P<header>[^\.]+)',
+    r'^(?P<protected>[^\.]+)',
     r'(?P<payload>[^\.]+)',
     r'(?P<signature>[^\.]+)$',
 ]
@@ -13,50 +14,58 @@ _component = [
 _compact = re.compile('\\.'.join(_component))
 
 
+class Jws(Crypto):
+    #: All members are defined in Cryptpo
+
+    @classmethod
+    def from_json(cls, json_str, base=None):
+        obj = BaseObject.from_json(json_str, base=cls)
+        if hasattr(obj, 'alg'):
+            obj.alg = obj.alg and SigEnum.create(obj.alg)
+        return obj
+
+    def merge(self, jws):
+        res = copy.deepcopy(self)
+        if jws:
+            for k, v in jws.__dict__.items():
+                if v:
+                    setattr(res, k, v)
+        return res
+
+
 class _Signature(BaseObject):
-    protected = ''      #: base64url(utf8(JWS Protected Header))
-    header = None       #: Json object of Header Claims
-    signature = ''      #: base64url(utf8(JWS Signature))
+    _fields = dict(
+        protected=None,    #: base64url(utf8(JWS Protected Header))
+        header=None,       #: Json object of Header Claims
+        signature='',      #: base64url(utf8(JWS Signature))
+    )
 
-    def __init__(self, protected='', header=None, signature='',
-                 *args, **kwargs):
-        super(_Signature, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(_Signature, self).__init__(**kwargs)
 
-        if protected:
-            if isinstance(protected, str):
+        if self.protected:
+            if isinstance(self.protected, str):
                 self.protected = Jws.from_json(
-                    base64.base64url_decode(protected))
-            elif isinstance(protected, Jws):
-                self.protectd = protected
+                    base64.base64url_decode(self.protected))
 
-        if isinstance(header, dict):
+        if isinstance(self.header, dict):
             self.header = Jws(**dict)
-        elif isinstance(header, Jws):
-            self.header = header
-        elif isinstance(header, str):
-            _json = base64.base64url_decode(header)
-            self.header = Jws.from_json(_json)
 
-        self.signature = signature
+        elif isinstance(self.header, str):
+            _json = base64.base64url_decode(self.header)
+            self.header = Jws.from_json(_json)
 
     def to_jws(self):
         #: merge protected and header(public)
         #: TODO: implement later
-        return self.header
+        return self.protected.merge(self.header)
 
 
 class JwsMessage(BaseObject):
-    payload = ''        #: Base64url(Jws Payload)
-    signatures = []     #: array of _Signature
-    _jws_list = []      #: list of Jws
-
-    def __init__(self, payload='', signatures=[], *args, **kwargs):
-        super(JwsMessage, self).__init__(*args, **kwargs)
-        self.payload = payload
-        if isinstance(signatures, list):
-            self.signatures = signatures
-            self._jws_list = [s.to_jws() for s in self.signatures
-                              if isinstance(s, _Signature)]
+    _fields = dict(
+        payload='',     # Base64url(Jws Payload
+        signatures=[],  # array of _Signature
+    )
 
     @classmethod
     def from_json(cls, json_str, base=None):
@@ -71,10 +80,6 @@ class JwsMessage(BaseObject):
 
         return obj
 
-    @property
-    def jws_list(self):
-        return self._jws_list
-
     @classmethod
     def from_token(cls, token):
         '''
@@ -88,6 +93,7 @@ class JwsMessage(BaseObject):
 
         try:
             m = _compact.search(token).groupdict()
+            print "@@@@@@ token ", m
             obj = cls(signatures=[_Signature(**m)], **m)
             return obj
         except Exception, e:
@@ -95,19 +101,6 @@ class JwsMessage(BaseObject):
             print traceback.format_exc()
 
         return None
-
-    def to_token(self):
-        return ''
-
-
-class Jws(Crypto):
-    #: All members are defined in Cryptpo
-
-    @classmethod
-    def from_json(cls, json_str, base=None):
-        obj = BaseObject.from_json(json_str, cls)
-        obj.alg = obj.alg and Signature.create(obj.alg)
-        return obj
 
     def to_token(self):
         return ''

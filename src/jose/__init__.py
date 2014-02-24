@@ -37,16 +37,20 @@ class BaseObjectSerializer(json.JSONEncoder):
         if isinstance(obj, Enum):
             return obj.value
         if isinstance(obj, object):
-            return obj.__dict__
+            #: instance as dict
+            return dict([(k, v) for k, v in obj.__dict__.items()
+                         if not k.startswith('_')])
 
         return super(BaseObjectSerializer, self).default(obj)
 
 
 class BaseObject(object):
     _serializer = BaseObjectSerializer
+    _fields = {}
 
-    def __init__(*args, **kwargs):
-        pass
+    def __init__(self, **kwargs):
+        map(lambda (k, v): setattr(self, k, kwargs.get(k, v)),
+            self._fields.items())
 
     def to_json(self, *args, **kwargs):
         kwargs['cls'] = self._serializer    #: Custom Serializer
@@ -54,7 +58,8 @@ class BaseObject(object):
 
     @classmethod
     def from_json(cls, json_str, base=None):
-        obj = type('', (base or cls, ), json.loads(json_str))()
+        base = base or cls
+        obj = base(**json.loads(json_str))
         return obj
 
 

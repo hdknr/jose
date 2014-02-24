@@ -1,8 +1,8 @@
 from jose import AlgorithmBaseEnum
 
-__all__ = ['Sigs', 'Signature', ]
+__all__ = ['SigDict', 'SigEnum', ]
 #
-Sigs = dict(
+SigDict = dict(
     HS256='HS256',
     HS384='HS384',
     HS512='HS512',
@@ -22,4 +22,4 @@ Sigs = dict(
     NONE='none',
 )
 
-Signature = type('Signature', (AlgorithmBaseEnum,), Sigs)
+SigEnum = type('SigEnum', (AlgorithmBaseEnum,), SigDict)

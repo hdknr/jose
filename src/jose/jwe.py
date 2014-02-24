@@ -1,5 +1,5 @@
 from crypto import Crypto
-from jwa.encs import Encryption
+from jwa.encs import EncEnum
 from jose import BaseEnum, BaseObject
 import re
 
@@ -19,14 +19,15 @@ class ZipEnum(BaseEnum):
 
 
 class Jwe(Crypto):
-    enc = None      #: Encryption Algorithm
-    zip = None      #: Compression Algorithm
-    #: Other members are defined Crypto
+    _fields = dict(
+        enc=None,     #: EncEnum Algorithm
+        zip=None,     #: ZipEnum Compression Algorithm
+    )
 
     @classmethod
     def from_json(cls, json_str, base=None):
         obj = BaseObject.from_json(json_str, cls)
-        obj.enc = Encryption.create(obj.enc)
+        obj.enc = EncEnum.create(obj.enc)
         obj.zip = ZipEnum.create(obj.zip)
 
     @classmethod

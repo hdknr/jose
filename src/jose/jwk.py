@@ -3,12 +3,12 @@ from jwa import keys    # , Algorithm
 #
 
 
-class Use(BaseEnum):
+class UseEnum(BaseEnum):
     sig = 'sign'
     enc = 'enc'
 
 
-class KeyOperation(BaseEnum):
+class KeyOpsEnum(BaseEnum):
     sign = 'sign'
     verify = 'verify'
     encrypt = 'encrypt'
@@ -20,22 +20,24 @@ class KeyOperation(BaseEnum):
 
 
 class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
-    kty = None      #: jwa.keys.KeyType
-    use = None      #: Use instance
-    key_ops = []    #: array of KeyOperation
-    alg = None      #: jwa.Algorithm to generate a private key
-    kid = ""        #: Key ID
-    x5u = ""        #: X.509 Url
-    x5c = []        #: X.509 Chain
-    x5t = ""        #: X.509 Thumprint
+    _fields = dict(
+        kty=None,      #: jwa.keys.KeyType
+        use=None,     #: UseEnum instance
+        key_ops=[],   #: array of KeyOpsEnum
+        alg=None,     #: jwa.Algorithm to generate a private key
+        kid="",       #: Key ID
+        x5u="",       #: X.509 Url
+        x5c=[],       #: X.509 Chain
+        x5t="",       #: X.509 Thumprint
+    )
 
     @classmethod
     def from_json(cls, json_str, base=None):
         obj = BaseObject.from_json(json_str, cls)
-        obj.kty = keys.KeyType.create(obj.kty)
-        obj.use = Use.create(obj.use)
+        obj.kty = keys.KeyTypeEnum.create(obj.kty)
+        obj.use = UseEnum.create(obj.use)
         if isinstance(obj.key_ops, list):
-            obj.key_ops = [KeyOperation(**ops)
+            obj.key_ops = [KeyOpsEnum(**ops)
                            for ops in obj.key_ops
                            if isinstance(ops, dict)]
 
@@ -43,7 +45,9 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
 
 
 class JwkSet(BaseObject):
-    keys = []   #: List of Jwk (Section 4.1)
+    _fields = dict(
+        keys=[]     # JwkSet list
+    )
 
     def save(self):
         pass

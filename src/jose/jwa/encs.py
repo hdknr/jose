@@ -1,7 +1,7 @@
 from jose import AlgorithmBaseEnum, BaseEnum
 #
 
-KeyEncs = dict(
+KeyEncDict = dict(
     RSA1_5='RSA1_5',
     RSA_OAEP='RSA-OAEP',
     A128KW='A128KW',
@@ -20,11 +20,11 @@ KeyEncs = dict(
     PBES2_HS512_A256KW='PBES2-HS512+A256KW',
 )
 
-KeyEncryption = type('', (AlgorithmBaseEnum,), KeyEncs)
+KeyEncEnum = type('KeyEncEnum', (AlgorithmBaseEnum,), KeyEncDict)
 
 
 # enc
-Encryptions = dict(
+EncDict = dict(
     A128CBC_HS256='A128CBC-HS256',
     A192CBC_HS384='A192CBC-HS384',
     A256CBC_HS512='A256CBC-HS512',
@@ -33,4 +33,4 @@ Encryptions = dict(
     A256GCM='A256GCM',
 )
 
-Encryption = type('', (BaseEnum,), Encryptions)
+EncEnum = type('EncEnum', (BaseEnum,), EncDict)

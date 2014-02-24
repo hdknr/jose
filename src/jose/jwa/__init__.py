@@ -1,8 +1,9 @@
 from jose import AlgorithmBaseEnum
-from encs import KeyEncs
-from sigs import Sigs
+from encs import KeyEncDict
+from sigs import SigDict
 
 __all__ = ['Algorithm', ]
 
 # alg
-Algorithm = type('Algorithm', (AlgorithmBaseEnum,), dict(Sigs, **KeyEncs))
+Algorithm = type('Algorithm',
+                 (AlgorithmBaseEnum,), dict(SigDict, **KeyEncDict))
