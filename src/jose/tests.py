@@ -43,7 +43,7 @@ class TestCrypto(unittest.TestCase):
         self.assertIsNotNone(jwe.search('aaaa.bbb.ccc.ddd.eee'))
 
 
-from jws import Jws, JwsMessage, _Signature
+from jws import Jws, Message, Signature
 from jwa.sigs import SigEnum
 
 
@@ -80,12 +80,12 @@ class TestJws(unittest.TestCase):
             'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
         ])
 
-        msg = JwsMessage.from_token(data)
+        msg = Message.from_token(data)
 
         self.assertIsNotNone(msg)
         self.assertIsNotNone(msg.signatures)
         self.assertEqual(len(msg.signatures), 1)
-        self.assertTrue(isinstance(msg.signatures[0],  _Signature))
+        self.assertTrue(isinstance(msg.signatures[0],  Signature))
 
         jws0 = msg.signatures[0].to_jws()
         self.assertIsNotNone(jws0)

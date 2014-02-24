@@ -33,7 +33,7 @@ class Jws(Crypto):
         return res
 
 
-class _Signature(BaseObject):
+class Signature(BaseObject):
     _fields = dict(
         protected=None,    #: base64url(utf8(JWS Protected Header))
         header=None,       #: Json object of Header Claims
@@ -41,7 +41,7 @@ class _Signature(BaseObject):
     )
 
     def __init__(self, **kwargs):
-        super(_Signature, self).__init__(**kwargs)
+        super(Signature, self).__init__(**kwargs)
 
         if self.protected:
             if isinstance(self.protected, str):
@@ -61,17 +61,17 @@ class _Signature(BaseObject):
         return self.protected.merge(self.header)
 
 
-class JwsMessage(BaseObject):
+class Message(BaseObject):
     _fields = dict(
         payload='',     # Base64url(Jws Payload
-        signatures=[],  # array of _Signature
+        signatures=[],  # array of Signature
     )
 
     @classmethod
     def from_json(cls, json_str, base=None):
         obj = BaseObject.from_json(json_str, cls)
         if isinstance(obj.signatures, list):
-            obj.signature = [_Signature(**val)
+            obj.signature = [Signature(**val)
                              for val in obj.signature
                              if isinstance(val, dict)]
             #: TODO:
@@ -94,7 +94,7 @@ class JwsMessage(BaseObject):
         try:
             m = _compact.search(token).groupdict()
             print "@@@@@@ token ", m
-            obj = cls(signatures=[_Signature(**m)], **m)
+            obj = cls(signatures=[Signature(**m)], **m)
             return obj
         except Exception, e:
             print type(e), e
