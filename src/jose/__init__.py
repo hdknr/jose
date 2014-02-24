@@ -49,8 +49,11 @@ class BaseObject(object):
     _fields = {}
 
     def __init__(self, **kwargs):
-        map(lambda (k, v): setattr(self, k, kwargs.get(k, v)),
-            self._fields.items())
+        self.set_values(self._fields, kwargs)
+
+    def set_values(self, inits, vals):
+        map(lambda (k, v): setattr(self, k, vals.get(k, v)),
+            inits.items())
 
     def to_json(self, *args, **kwargs):
         kwargs['cls'] = self._serializer    #: Custom Serializer

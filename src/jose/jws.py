@@ -1,6 +1,5 @@
 from crypto import Crypto
 from jose import BaseObject, base64
-from jwa.sigs import SigEnum
 import re
 import traceback
 import copy
@@ -16,13 +15,6 @@ _compact = re.compile('\\.'.join(_component))
 
 class Jws(Crypto):
     #: All members are defined in Cryptpo
-
-    @classmethod
-    def from_json(cls, json_str, base=None):
-        obj = BaseObject.from_json(json_str, base=cls)
-        if hasattr(obj, 'alg'):
-            obj.alg = obj.alg and SigEnum.create(obj.alg)
-        return obj
 
     def merge(self, jws):
         res = copy.deepcopy(self)

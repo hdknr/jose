@@ -1,4 +1,5 @@
 from jose import BaseObject
+from jwa import Algorithm
 
 
 class Crypto(BaseObject):
@@ -14,6 +15,10 @@ class Crypto(BaseObject):
         cty=None,      #: Content type of object
         crit=None,     #: Critical
     )
+
+    def __init__(self, **kwargs):
+        super(Crypto, self).__init__(**kwargs)
+        self.alg = self.alg and Algorithm.create(self.alg)
 
     @classmethod
     def from_token(cls, token):
