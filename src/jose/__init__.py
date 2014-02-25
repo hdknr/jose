@@ -1,21 +1,13 @@
-__all__ = ('__version__', '__build__', 'base64', )
+__all__ = ('__version__', '__build__', )
 __version__ = (0, 0, 1)
 __build__ = ''
 
-import base64
 import json
 from enum import Enum
 
 
 def get_version():
     return '.'.join(map(lambda v: str(v), __version__))
-
-
-base64.base64url_encode = \
-    lambda src: base64.urlsafe_b64encode(src).replace('=', '')
-
-base64.base64url_decode = \
-    lambda src: base64.urlsafe_b64decode(src + '=' * (len(src) % 4))
 
 
 class BaseEnum(Enum):
@@ -78,3 +70,8 @@ class AlgorithmBaseEnum(BaseEnum):
         if result is NotImplemented:
             return result
         return not result
+
+
+class BaseKey(object):
+    def __init__(self, jwk, *args, **kwargs):
+        self.jwk = jwk

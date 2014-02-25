@@ -1,5 +1,6 @@
 from crypto import Crypto
-from jose import BaseObject, base64
+from jose import BaseObject
+from jose.utils import base64
 import re
 import traceback
 import copy

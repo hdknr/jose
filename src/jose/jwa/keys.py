@@ -1,4 +1,8 @@
 from jose import BaseEnum
+import rsa
+import ec
+import oct
+
 
 # kty
 
@@ -8,7 +12,18 @@ KeyTypeDict = dict(
     OCT='oct',
 )
 
-KeyTypeEnum = type('KeyType', (BaseEnum,), KeyTypeDict)
+
+class BaseKeyTypeEnum(BaseEnum):
+
+    def get_loader(self, *args, **kwargs):
+        return dict(
+            RSA=rsa.Key,
+            EC=ec.Key,
+            oct=oct.Key,
+        )[self.value](*args, **kwargs)
+
+
+KeyTypeEnum = type('KeyType', (BaseKeyTypeEnum,), KeyTypeDict)
 
 # crv
 

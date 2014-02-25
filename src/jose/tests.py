@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from jose import base64
+from jose.utils import base64
 
 
 class TestBase64(unittest.TestCase):
@@ -106,6 +106,19 @@ class TestJwe(unittest.TestCase):
         print dir(jwe1)
         self.assertEqual(jwe1.alg, KeyEncEnum.RSA1_5)
 
+
+class TestUtils(unittest.TestCase):
+
+    def test_biglong(self):
+        import time
+        l = long(time.time()) ** 32
+
+        from jose.utils import base64
+
+        b = base64.long_to_b64(l)
+        l2 = base64.long_from_b64(b)
+
+        self.assertEqual(l, l2)
 
 if __name__ == '__main__':
     unittest.main()
