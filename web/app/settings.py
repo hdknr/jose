@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-os.environ['JOSE_CONFIGURATION_CLASS']='accounts.configurations.JoseConfiguration'
+os.environ['JOSE_CONFIGURATION_CLASS'
+           ] = 'djose.configurations.JoseConfiguration'
 
 
 # Quick-start development settings - unsuitable for production
@@ -79,8 +80,9 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.6/howto/static-files/
+# https://docs.djangoproject.com/en/1.6/
+# howto/static-files/
 
 STATIC_URL = '/static/'
 #####
-INSTALLED_APPS += ( 'accounts', )
+INSTALLED_APPS += ('accounts', 'djose', )

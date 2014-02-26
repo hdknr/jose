@@ -25,7 +25,7 @@ _super = dict(_super, **keys.Symmetric._fields)
 class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
     _fields = dict(
         _super,
-        kty=None,     #: jwa.keys.KeyType
+        kty=None,     #: jwa.keys.KeyTypeEnum
         use=None,     #: UseEnum instance
         key_ops=[],   #: array of KeyOpsEnum
         alg=None,     #: jwa.Algorithm to generate a private key
@@ -55,13 +55,6 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
     @classmethod
     def from_json(cls, json_str, base=None):
         obj = BaseObject.from_json(json_str, cls)
-#        obj.kty = keys.KeyTypeEnum.create(obj.kty)
-#        obj.use = UseEnum.create(obj.use)
-#        if isinstance(obj.key_ops, list):
-#            obj.key_ops = [KeyOpsEnum(**ops)
-#                           for ops in obj.key_ops
-#                           if isinstance(ops, dict)]
-#
         return obj
 
 
@@ -70,14 +63,17 @@ class JwkSet(BaseObject):
         keys=[]     # JwkSet list
     )
 
-    def save(self):
-        pass
-
 
 class JwkPair(BaseObject):
-    @classmethod
-    def create_rsa_pair(bits=2048):
-        return JwkPair()
+
+    def __init__(self, pri=None, pub=None,
+                 kty=keys.KeyTypeEnum.RSA, **kwargs):
+
+        self.pri = pri or Jwk(kty=kty, **kwargs)
+        self.pub = pub or Jwk(kty=kty, **kwargs)
+
+        if not pri:
+            kty.get_class().generate(self, **kwargs)
 
 
 class JwkPairSet(BaseObject):

@@ -1,9 +1,11 @@
-__all__ = ('__version__', '__build__', )
+__all__ = ('__version__', '__build__', 'get_version', 'conf', )
 __version__ = (0, 0, 1)
 __build__ = ''
 
 import json
 from enum import Enum
+import os
+from jose.utils import import_class
 
 
 def get_version():
@@ -31,7 +33,7 @@ class BaseObjectSerializer(json.JSONEncoder):
         if isinstance(obj, object):
             #: instance as dict
             return dict([(k, v) for k, v in obj.__dict__.items()
-                         if not k.startswith('_')])
+                         if not k.startswith('_') and v])
 
         return super(BaseObjectSerializer, self).default(obj)
 
@@ -57,6 +59,13 @@ class BaseObject(object):
         obj = base(**json.loads(json_str))
         return obj
 
+    def save(self, entity_id="me", id=None, *args, **kwargs):
+        conf.store.save(self, entity_id, id, *args, **kwargs)
+
+    @classmethod
+    def load(cls, entity_id="me", id=None, *args, **kwargs):
+        return conf.store.load(cls, entity_id, id, *args, **kwargs)
+
 
 class AlgorithmBaseEnum(BaseEnum):
 
@@ -73,5 +82,23 @@ class AlgorithmBaseEnum(BaseEnum):
 
 
 class BaseKey(object):
-    def __init__(self, jwk, *args, **kwargs):
+    def __init__(self, jwk=None, *args, **kwargs):
         self.jwk = jwk
+
+
+class BaseStore(object):
+    def save(self, obj, entity_id="me", id=None, *args, **kwargs):
+        pass
+
+    def load(self, obj_class, entity_id="me", id=None, *args, **kwargs):
+        pass
+
+
+def load_configuration_instance():
+    settings_class = os.environ.get(
+        'JOSE_CONFIGURATION_CLASS',
+        'jose.configurations.Configuration')
+    return import_class(settings_class)()
+
+
+conf = load_configuration_instance()

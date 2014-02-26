@@ -1,4 +1,6 @@
 import base64
+from importlib import import_module
+
 #import struct
 #from binascii import hexlify  # ,unhexlify
 #import re
@@ -35,3 +37,10 @@ def long_from_b64(s):
 
 base64.long_to_b64 = long_to_b64
 base64.long_from_b64 = long_from_b64
+#
+
+
+def import_class(class_path):
+    mod_name, class_name = class_path.rsplit('.', 1)
+    mod = import_module(mod_name)
+    return getattr(mod, class_name)

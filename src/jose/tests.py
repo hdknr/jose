@@ -16,7 +16,7 @@ class TestBase64(unittest.TestCase):
             '=',
             base64.base64url_decode(base64.base64url_encode('=')))
 
-from jose.jwk import Jwk
+from jose.jwk import Jwk, JwkPair
 from jose.jwa.keys import KeyTypeEnum
 
 
@@ -32,6 +32,12 @@ class TestJwk(unittest.TestCase):
         jwk2 = Jwk.from_json(data)
         self.assertEquals(jwk.kty, jwk2.kty)
         self.assertEquals(jwk.use, jwk2.use)
+
+    def test_keypair(self):
+        rsa = JwkPair()
+        self.assertEqual(rsa.pri.kty, KeyTypeEnum.RSA)
+        print rsa.pri.to_json(indent=2)
+        print rsa.pub.to_json(indent=2)
 
 
 class TestCrypto(unittest.TestCase):
@@ -50,10 +56,16 @@ from jwa.sigs import SigEnum
 class TestJws(unittest.TestCase):
 
     def test_simple(self):
+
         jws1 = Jws.from_json('{ "alg": "RS256"}')
         self.assertIsNotNone(jws1)
         print dir(jws1)
         self.assertEqual(jws1.alg, SigEnum.RS256)
+
+        signature = Signature()
+        self.assertIsNone(signature.header)
+        self.assertIsNotNone(signature.protected)
+        print "`@@@", signature.protected.alg
 
     def test_merge(self):
         jws1 = Jws.from_json('{ "alg": "RS256"}')
@@ -119,6 +131,17 @@ class TestUtils(unittest.TestCase):
         l2 = base64.long_from_b64(b)
 
         self.assertEqual(l, l2)
+
+from store import FileStore
+
+
+class TestStore(unittest.TestCase):
+
+    def test_save_and_load(self):
+        fs = FileStore()
+        jwk = Jwk()
+        fs.save(jwk)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,15 +15,18 @@ KeyTypeDict = dict(
 
 class BaseKeyTypeEnum(BaseEnum):
 
-    def get_loader(self, *args, **kwargs):
+    def get_class(self, *args, **kwargs):
         return dict(
             RSA=rsa.Key,
             EC=ec.Key,
             oct=oct.Key,
-        )[self.value](*args, **kwargs)
+        )[self.value]
+
+    def get_loader(self, *args, **kwargs):
+        return self.get_class()(*args, **kwargs)
 
 
-KeyTypeEnum = type('KeyType', (BaseKeyTypeEnum,), KeyTypeDict)
+KeyTypeEnum = type('KeyTypeEnum', (BaseKeyTypeEnum,), KeyTypeDict)
 
 # crv
 

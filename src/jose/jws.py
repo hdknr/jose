@@ -1,6 +1,7 @@
 from crypto import Crypto
 from jose import BaseObject
 from jose.utils import base64
+from jose.jwa.sigs import SigEnum
 import re
 import traceback
 import copy
@@ -48,10 +49,16 @@ class Signature(BaseObject):
             _json = base64.base64url_decode(self.header)
             self.header = Jws.from_json(_json)
 
+        if not any([self.protected, self.header]):
+            self.protected = Jws(alg=SigEnum.RS256)
+
     def to_jws(self):
         #: merge protected and header(public)
         #: TODO: implement later
         return self.protected.merge(self.header)
+
+    def sign(self, payload, jwk=None):
+        self.signature = ""         # TODO: implemente later
 
 
 class Message(BaseObject):
@@ -59,6 +66,12 @@ class Message(BaseObject):
         payload='',     # Base64url(Jws Payload
         signatures=[],  # array of Signature
     )
+
+    def add_signature(self, protected=None, header=None):
+        signature = Signature(
+            protected=protected, header=header)
+        signature.sign(self.payload)
+        self.append(signature)
 
     @classmethod
     def from_json(cls, json_str, base=None):
@@ -86,11 +99,9 @@ class Message(BaseObject):
 
         try:
             m = _compact.search(token).groupdict()
-            print "@@@@@@ token ", m
             obj = cls(signatures=[Signature(**m)], **m)
             return obj
-        except Exception, e:
-            print type(e), e
+        except Exception:
             print traceback.format_exc()
 
         return None
