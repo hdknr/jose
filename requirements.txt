@@ -1,12 +1,7 @@
-Django
-MySQL-python
-Sphinx
-Werkzeug
-django-extensions
 requests
 furl
 ordereddict
 jsonpickle
-M2Crypto
 pycrypto
 enum34
+ecdsa

@@ -63,7 +63,7 @@ class RSA(object):
 
 class EC(object):
     _fields = dict(
-        crv="",    #: jwa.Curve
+        crv="",    #: jwa.CurveEnum
         x="",      #: X Coordinate
         y="",      #: Y Coordinate
         d="",      #: ECC Private Key
