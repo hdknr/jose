@@ -48,15 +48,20 @@ class TestRsaKey(unittest.TestCase):
         self.assertEqual(pri3.q, pri2.q)
         self.assertEqual(pri3.u, pri2.u)
 
-        print "@@@@ private", dir(pri)
         print pri.keydata, type(pri.keydata)
         print pri.key, type(pri.key)
         print (pri.d, pri.p, pri.q, pri.u, )
 
-        print "@@@@ public", dir(pub)
         print pub.keydata, type(pub.keydata)
 
-        print "@@@ RSA", dir(RSA)
+        from uuid import uuid1
+        rnd = uuid1().int
+        msg = "Summer Breeze"
+
+        from hashlib import sha256
+        dig = sha256(msg).digest()
+        sig = pri.sign(dig, rnd)
+        self.assertTrue(pub.verify(dig, sig))
 
     def test_public(self):
 
@@ -79,6 +84,44 @@ class TestRsaKey(unittest.TestCase):
         pub = RSA.RSAImplementation().construct((ln, le,))
 
         print pub.exportKey('PEM')
+
+    def test_jwk(self):
+        from jose.jwa.keys import KeyTypeEnum
+        from jose.jwa.rsa import Key
+
+        # void key
+        key = KeyTypeEnum.RSA.create_key()
+        self.assertTrue(isinstance(key, Key))
+        self.assertEqual(key.kty, KeyTypeEnum.RSA)
+
+        self.assertFalse(key.is_public)
+        self.assertFalse(key.is_private)
+        self.assertIsNone(key.material)
+        self.assertIsNone(key.public_key)
+        self.assertIsNone(key.private_key)
+        self.assertIsNone(key.public_jwk)
+        self.assertIsNone(key.private_jwk)
+
+        # new private key
+        key.init_material()
+        self.assertTrue(key.is_private)
+        self.assertFalse(key.is_public)
+        self.assertIsNotNone(key.material)
+        self.assertIsNotNone(key.public_key)
+        self.assertIsNotNone(key.private_key)
+        self.assertIsNotNone(key.public_jwk)
+        self.assertIsNotNone(key.private_jwk)
+
+        pri_jwk = key.private_jwk
+        pub_jwk = key.public_jwk
+        self.assertEqual(pri_jwk.n, pub_jwk.n)
+        self.assertEqual(pri_jwk.e, pub_jwk.e)
+        self.assertEqual(pub_jwk.d, '')
+
+        pub_new = KeyTypeEnum.RSA.create_key(jwk=pub_jwk)
+        pri_new = KeyTypeEnum.RSA.create_key(jwk=pri_jwk)
+        self.assertEqual(key.public_tuple, pub_new.public_tuple)
+        self.assertEqual(key.private_tuple, pri_new.private_tuple)
 
 
 class TestEcKey(unittest.TestCase):
@@ -136,6 +179,66 @@ class TestEcKey(unittest.TestCase):
         print pub.verifies(digest, signature_new)
         print pub_new.verifies(digest, signature_old)
 
+        #
+        print dir(pri_new)
+        print dir(pub_new)
+        print dir(pub_new.curve)
+
+    def test_jwk(self):
+        from jose.jwa.keys import KeyTypeEnum, CurveEnum
+        from jose.jwa.ec import Key
+
+        # void key
+        key = KeyTypeEnum.EC.create_key()
+        self.assertTrue(isinstance(key, Key))
+        self.assertEqual(key.kty, KeyTypeEnum.EC)
+
+        self.assertFalse(key.is_public)
+        self.assertFalse(key.is_private)
+        self.assertIsNone(key.material)
+        self.assertIsNone(key.public_key)
+        self.assertIsNone(key.private_key)
+        self.assertIsNone(key.public_jwk)
+        self.assertIsNone(key.private_jwk)
+
+        # new private key
+        key.init_material(curve=CurveEnum.P_256)
+        self.assertTrue(key.is_private)
+        self.assertFalse(key.is_public)
+        self.assertIsNotNone(key.material)
+        self.assertIsNotNone(key.public_key)
+        self.assertIsNotNone(key.private_key)
+        self.assertIsNotNone(key.public_jwk)
+        self.assertIsNotNone(key.private_jwk)
+
+        pri_jwk = key.private_jwk
+        pub_jwk = key.public_jwk
+        print pri_jwk.to_json()
+        print pub_jwk.to_json()
+        self.assertEqual(pri_jwk.n, pub_jwk.n)
+        self.assertEqual(pri_jwk.e, pub_jwk.e)
+        self.assertEqual(pub_jwk.d, '')
+
+        pub_new = KeyTypeEnum.EC.create_key(jwk=pub_jwk)
+        pri_new = KeyTypeEnum.EC.create_key(jwk=pri_jwk)
+        self.assertEqual(key.public_tuple, pub_new.public_tuple)
+        self.assertEqual(key.private_tuple, pri_new.private_tuple)
+
+        # Signature
+        from ecdsa.ecdsa import string_to_int, Signature
+        from hashlib import sha512
+        from uuid import uuid1
+        rnd = uuid1().int
+        msg = "hello, it's me."
+        digest = string_to_int(sha512(msg).digest())
+        signature_new = pri_new.material.sign(digest, rnd)
+        self.assertTrue(isinstance(signature_new, Signature))
+        self.assertEqual(type(signature_new.r), long)
+        self.assertEqual(type(signature_new.s), long)
+
+        #Verify
+        self.assertTrue(
+            pub_new.material.verifies(digest, signature_new))
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,7 +16,7 @@ class TestBase64(unittest.TestCase):
             '=',
             base64.base64url_decode(base64.base64url_encode('=')))
 
-from jose.jwk import Jwk, JwkPair
+from jose.jwk import Jwk
 from jose.jwa.keys import KeyTypeEnum
 
 
@@ -32,12 +32,6 @@ class TestJwk(unittest.TestCase):
         jwk2 = Jwk.from_json(data)
         self.assertEquals(jwk.kty, jwk2.kty)
         self.assertEquals(jwk.use, jwk2.use)
-
-    def test_keypair(self):
-        rsa = JwkPair()
-        self.assertEqual(rsa.pri.kty, KeyTypeEnum.RSA)
-        print rsa.pri.to_json(indent=2)
-        print rsa.pub.to_json(indent=2)
 
 
 class TestCrypto(unittest.TestCase):
@@ -142,6 +136,34 @@ class TestStore(unittest.TestCase):
         jwk = Jwk()
         fs.save(jwk)
 
+
+from jose.jwt import Jwt
+
+
+class TestJwt(unittest.TestCase):
+
+    def test_simple(self):
+
+        vals = {
+            'iss': 'joe',
+            'exp': 1300819380,
+            "http://example.com/is_root": True,
+        }
+        jwt_org = Jwt(**vals)
+        jwt_json = jwt_org.to_json()
+
+        jwt_new = Jwt.from_json(jwt_json)
+        self.assertEqual(jwt_new.iss, jwt_org.iss)
+        self.assertEqual(jwt_new.exp, jwt_org.exp)
+        self.assertEqual(jwt_new['http://example.com/is_root'], True)
+
+    def test_serialize(self):
+        jwt_json = '''
+           {"iss":"joe",
+                 "exp":1300819380,
+                       "http://example.com/is_root":true}'''
+        jwt_new = Jwt.from_json(jwt_json)
+        self.assertEqual(jwt_new['http://example.com/is_root'], True)
 
 if __name__ == '__main__':
     unittest.main()

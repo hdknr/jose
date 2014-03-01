@@ -1,8 +1,4 @@
 from jose import AlgorithmBaseEnum
-import rsa
-import ec
-import hmac
-import misc
 
 __all__ = ['SigDict', 'SigEnum', ]
 #
@@ -29,6 +25,10 @@ SigDict = dict(
 
 class SigAlgorithmEnum(AlgorithmBaseEnum):
     def get_class(self):
+        import rsa
+        import ec
+        import hmac
+        import misc
         mod = dict(H=hmac, R=rsa,
                    P=rsa, E=ec, N=misc)[self.name[0]]
         return getattr(mod, self.name)

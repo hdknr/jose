@@ -1,8 +1,4 @@
 from jose import BaseEnum
-import rsa
-import ec
-import oct
-
 
 # kty
 
@@ -15,15 +11,19 @@ KeyTypeDict = dict(
 
 class BaseKeyTypeEnum(BaseEnum):
 
-    def get_class(self, *args, **kwargs):
+    def get_key_class(self, *args, **kwargs):
+        import rsa
+        import ec
+        import oct
+
         return dict(
             RSA=rsa.Key,
             EC=ec.Key,
             oct=oct.Key,
         )[self.value]
 
-    def get_loader(self, *args, **kwargs):
-        return self.get_class()(*args, **kwargs)
+    def create_key(self, *args, **kwargs):
+        return self.get_key_class()(self, *args, **kwargs)
 
 
 KeyTypeEnum = type('KeyTypeEnum', (BaseKeyTypeEnum,), KeyTypeDict)
@@ -36,7 +36,13 @@ CurveDict = dict(
     P_521='P-521',
 )
 
-CurveEnum = type('Curve', (BaseEnum,), CurveDict)
+
+class BaseCurveEnum(BaseEnum):
+    def get_curve(self, *args, **kwargs):
+        import ec
+        return ec.CURVE[self.name]
+
+CurveEnum = type('Curve', (BaseCurveEnum,), CurveDict)
 
 
 class RSAOtherPrime(object):

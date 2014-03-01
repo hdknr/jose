@@ -32,7 +32,12 @@ class BaseObjectSerializer(json.JSONEncoder):
             return obj.value
         if isinstance(obj, object):
             #: instance as dict
-            return dict([(k, v) for k, v in obj.__dict__.items()
+            if hasattr(obj, '_customs'):
+                vals = obj._customs.copy()
+            else:
+                vals = {}
+            vals.update(obj.__dict__)
+            return dict([(k, v) for k, v in vals.items()
                          if not k.startswith('_') and v])
 
         return super(BaseObjectSerializer, self).default(obj)
@@ -43,11 +48,24 @@ class BaseObject(object):
     _fields = {}
 
     def __init__(self, **kwargs):
+        self._customs = {}
         self.set_values(self._fields, kwargs)
 
+    def __getitem__(self, key):
+        return self._customs.get(key, None)
+
+    def __setitem__(self, key, val):
+        self.__customs[key] = val
+
     def set_values(self, inits, vals):
-        map(lambda (k, v): setattr(self, k, vals.get(k, v)),
-            inits.items())
+        keys = inits.keys()
+        data = inits.copy()
+        data.update(vals)
+        for k, v in data.items():
+            if k in keys:
+                setattr(self, k, v)
+            else:
+                self._customs[k] = v
 
     def to_json(self, *args, **kwargs):
         kwargs['cls'] = self._serializer    #: Custom Serializer
@@ -82,8 +100,20 @@ class AlgorithmBaseEnum(BaseEnum):
 
 
 class BaseKey(object):
-    def __init__(self, jwk=None, *args, **kwargs):
-        self.jwk = jwk
+    def __init__(self, kty, material=None, jwk=None,
+                 *args, **kwargs):
+        self.kty = kty  #: KeyTypeEnum
+        self.material = material
+        if self.material is None and jwk:
+            self.from_jwk(jwk)
+
+    @property
+    def is_public(self):
+        return False
+
+    @property
+    def is_private(self):
+        return False
 
 
 class BaseStore(object):

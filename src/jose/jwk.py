@@ -1,6 +1,7 @@
 from jose import BaseEnum, BaseObject
 from jwa import keys        # , Algorithm
 #
+import requests
 
 
 class UseEnum(BaseEnum):
@@ -39,23 +40,39 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
         super(Jwk, self).__init__(**kwargs)
 
         if isinstance(self.kty, basestring):
+            print "@@@@@@", self.kty
             self.kty = keys.KeyTypeEnum.create(self.kty)
 
         if isinstance(self.use, basestring):
             self.use = UseEnum.create(self.use)
+
+        if isinstance(self.crv, basestring):
+            self.crv = keys.CurveEnum.create(self.crv)
 
         if isinstance(self.key_ops, list):
             self.key_ops = [KeyOpsEnum(**ops)
                             for ops in self.key_ops
                             if isinstance(ops, dict)]
 
-    def keyobject(self):
+    def algorighm(self):
         return self.kty.get_class(self)
+
+    def material(self):
+        return self.algorithm(self)
 
     @classmethod
     def from_json(cls, json_str, base=None):
         obj = BaseObject.from_json(json_str, cls)
         return obj
+
+    @classmethod
+    def from_uri(cls, uri):
+        json_str = requests.get(uri).content
+        return cls.from_json(json_str)
+
+    @classmethod
+    def from_uri_cache(cls, uri):
+        return cls.load(uri) or cls.from_uri(uri)
 
 
 class JwkSet(BaseObject):
@@ -64,18 +81,18 @@ class JwkSet(BaseObject):
     )
 
 
-class JwkPair(BaseObject):
-
-    def __init__(self, pri=None, pub=None,
-                 kty=keys.KeyTypeEnum.RSA, **kwargs):
-
-        self.pri = pri or Jwk(kty=kty, **kwargs)
-        self.pub = pub or Jwk(kty=kty, **kwargs)
-
-        if not pri:
-            kty.get_class().generate(self, **kwargs)
-
-
-class JwkPairSet(BaseObject):
-    def __init__(self, entity_id):
-        self.entity_id = entity_id
+#class JwkPair(BaseObject):
+#
+#    def __init__(self, pri=None, pub=None,
+#                 kty=keys.KeyTypeEnum.RSA, **kwargs):
+#
+#        self.pri = pri or Jwk(kty=kty, **kwargs)
+#        self.pub = pub or Jwk(kty=kty, **kwargs)
+#
+##        #if not pri:
+##            kty.get_class().generate(self, **kwargs)
+#
+#
+#class JwkPairSet(BaseObject):
+#    def __init__(self, entity_id):
+#        self.entity_id = entity_id
