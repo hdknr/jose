@@ -1,0 +1,6 @@
+Django
+MySQL-python
+Sphinx
+Werkzeug
+django-extensions
+M2Crypto
