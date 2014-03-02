@@ -1,5 +1,4 @@
 from jose import BaseObject
-from jwa import Algorithm
 
 
 class Crypto(BaseObject):

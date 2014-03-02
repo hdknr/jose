@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from jose.jwa import Algorithm
+from jose.jwa import AlgEnum
 
 
 class TestJwa(unittest.TestCase):
@@ -12,10 +12,10 @@ class TestJwa(unittest.TestCase):
         self.assertEquals(Hoge.A, 'a')
 
     def test_alg(self):
-        print dir(Algorithm)
-        alg = Algorithm.create('RS256')
+        print dir(AlgEnum)
+        alg = AlgEnum.create('RS256')
         self.assertIsNotNone(alg)
-        self.assertEqual(alg, Algorithm.RS256)
+        self.assertEqual(alg, AlgEnum.RS256)
 
 
 class TestRsaKey(unittest.TestCase):

@@ -5,5 +5,5 @@ from sigs import SigDict
 __all__ = ['Algorithm', ]
 
 # alg
-Algorithm = type('Algorithm',
-                 (AlgorithmBaseEnum,), dict(SigDict, **KeyEncDict))
+AlgDict = dict(SigDict, **KeyEncDict)
+AlgEnum = type('AlgEnum', (AlgorithmBaseEnum,), AlgDict)
