@@ -7,11 +7,16 @@ from importlib import import_module
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 
 
+def _ss(str_data):
+    if isinstance(str_data, unicode):
+        return str_data.encode('utf8')
+    return str_data
+
 base64.base64url_encode = \
     lambda src: base64.urlsafe_b64encode(src).replace('=', '')
 
 base64.base64url_decode = \
-    lambda src: base64.urlsafe_b64decode(src + '=' * (len(src) % 4))
+    lambda src: base64.urlsafe_b64decode(_ss(src) + '=' * (len(src) % 4))
 
 
 #def long_to_bytes(n):

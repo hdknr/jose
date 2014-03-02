@@ -61,6 +61,7 @@ class TestRsaKey(unittest.TestCase):
         from hashlib import sha256
         dig = sha256(msg).digest()
         sig = pri.sign(dig, rnd)
+        print "@@@ signature", sig
         self.assertTrue(pub.verify(dig, sig))
 
     def test_public(self):

@@ -1,7 +1,11 @@
 from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA256, SHA384, SHA512
+from Crypto.Signature import PKCS1_v1_5
+#
 from jose.utils import base64
 from jose import BaseKey
 from jose.jwk import Jwk
+
 
 # https://www.dlitz.net/software/pycrypto/api/current/
 #   Crypto.PublicKey.RSA.RSAImplementation-class.html
@@ -61,6 +65,7 @@ class Key(BaseKey):
             return None
 
         jwk = Jwk(
+            kty=self.kty,
             n=base64.long_to_b64(self.material.n),
             e=base64.long_to_b64(self.material.e),
             d=base64.long_to_b64(self.material.d),
@@ -75,6 +80,7 @@ class Key(BaseKey):
         if not self.material:
             return None
         jwk = Jwk(
+            kty=self.kty,
             n=base64.long_to_b64(self.material.n),
             e=base64.long_to_b64(self.material.e),
         )
@@ -94,26 +100,46 @@ class Key(BaseKey):
 
     @property
     def is_private(self):
-
         return self.material is not None and \
             self.material.d is not None
 
     @property
     def is_public(self):
         return self.material is not None and \
-            self.material.d is None
+            (not hasattr(self.material, 'd') or
+             not self.material.d)
 
 
 class RS256(object):
-    pass
+    _digester = SHA256
+    _signer = PKCS1_v1_5
+
+    def digest(self, data):
+        return self._digester.new(data).digest()
+
+    def hexdigest(self, data):
+        return self._digester(data).hexdigest()
+
+    def sign(self, jwk, data):
+        assert jwk.material is not None and jwk.material.is_private
+        dig = self._digester.new(data)
+        signer = self._signer.new(jwk.material.private_key)
+        signature = signer.sign(dig)
+        return signature
+
+    def verify(self, jwk, data, signature):
+        assert jwk.material is not None
+        dig = self._digester.new(data)
+        verifier = self._signer.new(jwk.material.public_key)
+        return verifier.verify(dig, signature)
 
 
 class RS384(object):
-    pass
+    _digester = SHA384
 
 
 class RS512(object):
-    pass
+    _digester = SHA512
 
 
 class PS256(object):

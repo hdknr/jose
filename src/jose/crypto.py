@@ -16,10 +16,6 @@ class Crypto(BaseObject):
         crit=None,     #: Critical
     )
 
-    def __init__(self, **kwargs):
-        super(Crypto, self).__init__(**kwargs)
-        self.alg = self.alg and Algorithm.create(self.alg)
-
     @classmethod
     def from_token(cls, token):
         return None

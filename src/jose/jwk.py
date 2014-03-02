@@ -40,7 +40,6 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
         super(Jwk, self).__init__(**kwargs)
 
         if isinstance(self.kty, basestring):
-            print "@@@@@@", self.kty
             self.kty = keys.KeyTypeEnum.create(self.kty)
 
         if isinstance(self.use, basestring):
@@ -54,11 +53,9 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
                             for ops in self.key_ops
                             if isinstance(ops, dict)]
 
-    def algorighm(self):
-        return self.kty.get_class(self)
-
+    @property
     def material(self):
-        return self.algorithm(self)
+        return self.kty.create_key(jwk=self)
 
     @classmethod
     def from_json(cls, json_str, base=None):
@@ -73,6 +70,28 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
     @classmethod
     def from_uri_cache(cls, uri):
         return cls.load(uri) or cls.from_uri(uri)
+
+    @property
+    def public_jwk(self):
+        return self.material.public_jwk
+
+    @property
+    def private_jwk(self):
+        return self.material.private_jwk
+
+    @property
+    def is_public(self):
+        return self.material.is_public
+
+    @property
+    def is_private(self):
+        return self.material.is_private
+
+    @classmethod
+    def generate(cls, kty=keys.KeyTypeEnum.RSA, *args, **kwargs):
+        key = kty.create_key()
+        key.init_material(*args, **kwargs)
+        return key.private_jwk
 
 
 class JwkSet(BaseObject):

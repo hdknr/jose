@@ -33,5 +33,8 @@ class SigAlgorithmEnum(AlgorithmBaseEnum):
                    P=rsa, E=ec, N=misc)[self.name[0]]
         return getattr(mod, self.name)
 
+    def create_signer(self):
+        return self.get_class()()
+
 
 SigEnum = type('SigEnum', (SigAlgorithmEnum,), SigDict)
