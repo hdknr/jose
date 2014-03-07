@@ -7,3 +7,4 @@ enum34
 ecdsa
 ecc
 -e git+https://github.com/dlitz/python-pbkdf2.git#egg=pbkdf2
+-e git+https://github.com/hdknr/AES-GCM-Python.git#egg=aes_gcm
