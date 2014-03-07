@@ -40,9 +40,9 @@
 #
 
 ######################################################
-NAME='jose'
-DESCRIPTION='Jose - Jxx '
-PACKAGES=['jose',]
+NAME = 'jose'
+DESCRIPTION = 'Jose - Jxx '
+PACKAGES = ['jose', ]
 ######################################################
 import sys
 import os
@@ -55,33 +55,39 @@ from setuptools import setup
 
 from jose import get_version
 
-SCRIPTS=glob.glob('src/scripts/*.py')
+SCRIPTS = glob.glob('src/scripts/*.py')
 try:
-    INSTALL_REQUIRES=[ r for r in open('requirements.txt').read().split('\n') if len(r)>0]
+    INSTALL_REQUIRES = [
+        r for r in
+        open('requirements.txt').read().split('\n')
+        if len(r) > 0 and not r.startswith('-e')
+    ]
 except:
-    INSTALL_REQUIRES=[] 
+    INSTALL_REQUIRES = []
 
 # - readme
+
 
 def read(fname):
     """Utility function to read the README file."""
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     setup(
-        name = NAME,
-        version = get_version(),
-        license = 'Simplfied BSD License',
-        author = 'Hideki Nara of LaFoaglia,Inc.',
-        author_email = 'gmail [at] hdknr.com',
-        maintainer = 'LaFoglia,Inc.',
-        maintainer_email = 'gmail [at] hdknr.com',
-        url = 'https://github.com/hdknr/jose',
-        description = DESCRIPTION,
-        long_description = read('README.rst'),
-        download_url = 'https://github.com/hdknr/jose',
+        name=NAME,
+        version=get_version(),
+        license='Simplfied BSD License',
+        author='Hideki Nara of LaFoaglia,Inc.',
+        author_email='gmail [at] hdknr.com',
+        maintainer='LaFoglia,Inc.',
+        maintainer_email='gmail [at] hdknr.com',
+        url='https://github.com/hdknr/jose',
+        description=DESCRIPTION,
+        long_description=read('README.rst'),
+        download_url='https://github.com/hdknr/jose',
         platforms=['any'],
-        classifiers = [
+        classifiers=[
             'Development Status :: 4 - Beta',
             'Environment :: Library',
             'Intended Audience :: Developers',
@@ -90,9 +96,9 @@ if __name__=='__main__':
             'Operating System :: OS Independent',
             'Programming Language :: Python',
         ],
-        package_dir = {'': 'src'},
-        packages = PACKAGES,
-        include_package_data = True,
-        zip_safe = False,
+        package_dir={'': 'src'},
+        packages=PACKAGES,
+        include_package_data=True,
+        zip_safe=False,
         scripts=SCRIPTS,
     )

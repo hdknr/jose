@@ -185,6 +185,25 @@ class TestEcKey(unittest.TestCase):
         print dir(pub_new)
         print dir(pub_new.curve)
 
+    def test_exchage(self):
+        from ecdsa import SigningKey, NIST521p
+
+        alice_own = SigningKey.generate(curve=NIST521p)
+        bob_own = SigningKey.generate(curve=NIST521p)
+
+        alice_pri = alice_own.privkey
+        alice_pub = alice_pri.public_key
+
+        bob_pri = bob_own.privkey
+        bob_pub = bob_pri.public_key
+
+        alice_pub_point = alice_pub.point
+        bob_pub_point = bob_pub.point
+
+
+
+
+
     def test_jwk(self):
         from jose.jwa.keys import KeyTypeEnum, CurveEnum
         from jose.jwa.ec import Key
@@ -240,6 +259,7 @@ class TestEcKey(unittest.TestCase):
         #Verify
         self.assertTrue(
             pub_new.material.verifies(digest, signature_new))
+
 
 if __name__ == '__main__':
     unittest.main()

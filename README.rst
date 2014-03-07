@@ -1,12 +1,27 @@
 Jose
-========================================================================
+====================================
 
-under development.
+Cryptography Depencencies
+------------------------------------
 
-For Debian
--------------
+Most of them
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Sqlite3 may be used in test runner::
+.. code-block:: bash
 
-    $ sudo aptitude install sqlite3 libsqlite3-dev
+    $ pip instal pycrypto
 
+
+ECDSA, ECDH-ES
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    $ pip install ecc
+
+GCM
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    $ pip install -e git+https://github.com/dlitz/python-pbkdf2.git#egg=pbkdf2

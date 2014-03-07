@@ -1,5 +1,5 @@
 from Crypto.PublicKey import RSA
-from Crypto.Hash import SHA256, SHA384, SHA512
+from Crypto.Hash import SHA, SHA256, SHA384, SHA512
 from Crypto.Signature import PKCS1_v1_5
 #
 from jose.utils import base64
@@ -152,3 +152,20 @@ class PS384(object):
 
 class PS512(object):
     pass
+
+
+from Crypto.Cipher import PKCS1_v1_5, PKCS1_OAEP
+
+
+class RSA1_5(object):
+    _padding = PKCS1_v1_5
+
+    def get_cipher(self):
+        pass
+
+
+class RSA_OAEP(object):
+    _padding = PKCS1_OAEP
+
+    def get_cipher(self):
+        pass
