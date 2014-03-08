@@ -54,8 +54,10 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
                             if isinstance(ops, dict)]
 
     @property
-    def material(self):
-        return self.kty.create_key(jwk=self)
+    def key(self):
+        if not hasattr(self, "_key"):
+            self._key = self.kty.create_key(jwk=self)
+        return self._key
 
     @classmethod
     def from_json(cls, json_str, base=None):
@@ -73,19 +75,19 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
 
     @property
     def public_jwk(self):
-        return self.material.public_jwk
+        return self.key.public_jwk
 
     @property
     def private_jwk(self):
-        return self.material.private_jwk
+        return self.key.private_jwk
 
     @property
     def is_public(self):
-        return self.material.is_public
+        return self.key.is_public
 
     @property
     def is_private(self):
-        return self.material.is_private
+        return self.key.is_private
 
     @classmethod
     def generate(cls, kty=keys.KeyTypeEnum.RSA, *args, **kwargs):

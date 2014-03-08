@@ -121,16 +121,16 @@ class RS256(object):
         return self._digester(data).hexdigest()
 
     def sign(self, jwk, data):
-        assert jwk.material is not None and jwk.material.is_private
+        assert jwk.key is not None and jwk.key.is_private
         dig = self._digester.new(data)
-        signer = self._signer.new(jwk.material.private_key)
+        signer = self._signer.new(jwk.key.private_key)
         signature = signer.sign(dig)
         return signature
 
     def verify(self, jwk, data, signature):
-        assert jwk.material is not None
+        assert jwk.key is not None
         dig = self._digester.new(data)
-        verifier = self._signer.new(jwk.material.public_key)
+        verifier = self._signer.new(jwk.key.public_key)
         return verifier.verify(dig, signature)
 
 

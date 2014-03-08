@@ -301,7 +301,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
 
 
         # Sign
-        pri = jwk.material.private_key
+        pri = jwk.key.private_key
 
         self.assertEqual(pri._priv[0], 521)
         self.assertEqual(
@@ -318,7 +318,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         print signature
 
         # Verify
-        pub = jwk.material.public_key
+        pub = jwk.key.public_key
         self.assertEqual(pub._pub[0], 521)
         self.assertEqual(pub._pub[1][0],
             base64.long_from_b64(

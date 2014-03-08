@@ -167,7 +167,7 @@ class TestJws(unittest.TestCase):
         }
 
         jwk = Jwk(**pri_json_dict)
-        self.assertTrue(jwk.material.is_private)
+        self.assertTrue(jwk.key.is_private)
         signer = jws_new.alg.create_signer()
         from jose.jwa.rsa import RS256
         self.assertTrue(isinstance(signer, RS256))
