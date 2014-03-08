@@ -31,7 +31,13 @@ KeyEncDict = dict(
     PBES2_HS512_A256KW='PBES2-HS512+A256KW',
 )
 
-KeyEncEnum = type('KeyEncEnum', (AlgorithmBaseEnum,), KeyEncDict)
+
+class KeyEncEnumBase(AlgorithmBaseEnum):
+    def get_encryptor(self):
+        pass
+
+
+KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)
 
 
 # enc

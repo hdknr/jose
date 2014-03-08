@@ -38,9 +38,9 @@ CurveDict = dict(
 
 
 class BaseCurveEnum(BaseEnum):
-    def get_curve(self, *args, **kwargs):
-        import ec
-        return ec.CURVE[self.name]
+    @property
+    def bits(self):
+        return int(self.name[2:])
 
 CurveEnum = type('Curve', (BaseCurveEnum,), CurveDict)
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from jose.utils import base64
 
 
 class TestEcKeyEcc(unittest.TestCase):
@@ -78,7 +79,6 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         }
 
         import re
-        from jose.utils import base64
         _to_pub = lambda km: (
             int(re.search(r"P-(\d+)$", "P-256").group(1)),
             (base64.long_from_b64(km['x']),
@@ -207,8 +207,164 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         self.assertEqual("VqqN6vgjbSBcIijNcacQGg",
                          base64.base64url_encode(_derived_key_u))
 
+    def test_jwk(self):
+        from jose.jwa.keys import KeyTypeEnum, CurveEnum
+        from jose.jwa.ec import Key
+
+        # void key
+        key = KeyTypeEnum.EC.create_key()
+        self.assertTrue(isinstance(key, Key))
+        self.assertEqual(key.kty, KeyTypeEnum.EC)
+
+        self.assertFalse(key.is_public)
+        self.assertFalse(key.is_private)
+        self.assertIsNone(key.material)
+        self.assertIsNone(key.public_key)
+        self.assertIsNone(key.private_key)
+        self.assertIsNone(key.public_jwk)
+        self.assertIsNone(key.private_jwk)
+
+        # new private key
+        key.init_material(curve=CurveEnum.P_256)
+        self.assertTrue(key.is_private)
+        self.assertFalse(key.is_public)
+        self.assertIsNotNone(key.material)
+        self.assertIsNotNone(key.public_key)
+        self.assertIsNotNone(key.private_key)
+        self.assertIsNotNone(key.public_jwk)
+        self.assertIsNotNone(key.private_jwk)
+
+        pri_jwk = key.private_jwk
+        pub_jwk = key.public_jwk
+        print pri_jwk.to_json()
+        print pub_jwk.to_json()
+        self.assertEqual(pri_jwk.n, pub_jwk.n)
+        self.assertEqual(pri_jwk.e, pub_jwk.e)
+        self.assertEqual(pub_jwk.d, '')
+
+        print pub_jwk.to_json()
+        pub_new = KeyTypeEnum.EC.create_key(jwk=pub_jwk)
+        pri_new = KeyTypeEnum.EC.create_key(jwk=pri_jwk)
+        self.assertEqual(key.public_tuple, pub_new.public_tuple)
+        self.assertEqual(key.private_tuple, pri_new.private_tuple)
+
+        # Signature
+        msg = "hello, it's me."
+        signature_new = pri_new.material.sign(msg, 'sha256')
+        print type(signature_new)
+
+        #Verify
+        self.assertTrue(
+            pub_new.material.verify(msg, signature_new))
+
+    def test_jws_appendix_a4(self):
+        header_str = '{"alg":"ES512"}'
+        header_oct = [
+            123, 34, 97, 108, 103, 34,
+            58, 34, 69, 83, 53, 49, 50, 34, 125]
+        self.assertEqual([ord(i) for i in header_str], header_oct)
+
+        header_b64 = 'eyJhbGciOiJFUzUxMiJ9'
+        self.assertEqual(base64.base64url_encode(header_str), header_b64)
+
+        payload_str = "Payload"
+        payload_oct = [
+            80, 97, 121, 108, 111, 97, 100,
+        ]
+        self.assertEqual([ord(i) for i in payload_str], payload_oct)
+        payload_b64 = "UGF5bG9hZA"
+        self.assertEqual(base64.base64url_encode(payload_str), payload_b64)
+
+        signing_input_b64 = ".".join([header_b64, payload_b64])
+        signing_input_oct = [
+            101, 121, 74, 104, 98, 71, 99,
+            105, 79, 105, 74, 70, 85, 122, 85,
+            120, 77, 105, 74, 57, 46, 85, 71,
+            70, 53, 98, 71, 57, 104, 90, 65]
+        self.assertEqual([ord(i) for i in signing_input_b64],
+                         signing_input_oct)
+
+        jwk_str = '''
+ {"kty":"EC",
+  "crv":"P-521",
+  "x":"AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk",
+  "y":"ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2",
+  "d":"AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C"
+ }'''
+
+        from jose.jwk import Jwk
+        jwk = Jwk.from_json(jwk_str)
+
+        from ecc.encoding import dec_long, enc_long
+        from ecc.ecdsa import sign, verify
+        import hashlib
+
+
+        # Sign
+        pri = jwk.material.private_key
+
+        self.assertEqual(pri._priv[0], 521)
+        self.assertEqual(
+            pri._priv[1],
+            base64.long_from_b64(
+                'AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C')
+        )
+
+        digest = dec_long(hashlib.new('sha512',
+                                      signing_input_b64).digest())
+        signature = sign(digest, pri._priv)
+        self.assertEqual(type(signature), tuple)
+        #: This signature changes everytime.
+        print signature
+
+        # Verify
+        pub = jwk.material.public_key
+        self.assertEqual(pub._pub[0], 521)
+        self.assertEqual(pub._pub[1][0],
+            base64.long_from_b64(
+                "AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk"
+            )
+        )
+        self.assertEqual(pub._pub[1][1],
+            base64.long_from_b64(
+                "ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2"
+            )
+        )
+
+        self.assertTrue(verify(digest, signature, pub._pub))
+
+        sig_jws_oct = (
+            [1, 220, 12, 129, 231, 171, 194, 209, 232, 135, 233,
+             117, 247, 105, 122, 210, 26, 125, 192, 1, 217, 21, 82,
+             91, 45, 240, 255, 83, 19, 34, 239, 71, 48, 157, 147,
+             152, 105, 18, 53, 108, 163, 214, 68, 231, 62, 153, 150,
+             106, 194, 164, 246, 72, 143, 138, 24, 50, 129, 223, 133,
+             206, 209, 172, 63, 237, 119, 109],
+            [0, 111, 6, 105, 44, 5, 41, 208, 128, 61, 152, 40, 92,
+             61, 152, 4, 150, 66, 60, 69, 247, 196, 170, 81, 193,
+             199, 78, 59, 194, 169, 16, 124, 9, 143, 42, 142, 131,
+             48, 206, 238, 34, 175, 83, 203, 220, 159, 3, 107, 155,
+             22, 27, 73, 111, 68, 68, 21, 238, 144, 229, 232, 148,
+             188, 222, 59, 242, 103]
+        )
+
+        sig_jws_b64 =''.join([
+            'AdwMgeerwtHoh-l192l60hp9wAHZFVJbLfD_UxMi70cwnZOYaRI1bKPWROc-mZZq',
+            'wqT2SI-KGDKB34XO0aw_7XdtAG8GaSwFKdCAPZgoXD2YBJZCPEX3xKpRwcdOO8Kp',
+            'EHwJjyqOgzDO7iKvU8vcnwNrmxYbSW9ERBXukOXolLzeO_Jn',
+        ])
+
+        sig_jws_str = base64.base64url_decode(sig_jws_b64)
+        self.assertEqual(len(sig_jws_str), 66 * 2)
+        from Crypto.Util.number import bytes_to_long
+        sig_jws_tuple = (bytes_to_long(sig_jws_str[:66]),
+                         bytes_to_long(sig_jws_str[66:]),)
+
+        self.assertTrue(verify(digest, sig_jws_tuple, pub._pub))
+
 
 class TestEcKeyEcdsa(unittest.TestCase):
+    ''' python-ecdsa'''
     def test_generate(self):
         from ecdsa import SigningKey, NIST521p
 
@@ -284,62 +440,6 @@ class TestEcKeyEcdsa(unittest.TestCase):
         bob_pub_point = bob_pub.point
 
         print alice_pub_point, bob_pub_point
-
-    def test_jwk(self):
-        from jose.jwa.keys import KeyTypeEnum, CurveEnum
-        from jose.jwa.ec import Key
-
-        # void key
-        key = KeyTypeEnum.EC.create_key()
-        self.assertTrue(isinstance(key, Key))
-        self.assertEqual(key.kty, KeyTypeEnum.EC)
-
-        self.assertFalse(key.is_public)
-        self.assertFalse(key.is_private)
-        self.assertIsNone(key.material)
-        self.assertIsNone(key.public_key)
-        self.assertIsNone(key.private_key)
-        self.assertIsNone(key.public_jwk)
-        self.assertIsNone(key.private_jwk)
-
-        # new private key
-        key.init_material(curve=CurveEnum.P_256)
-        self.assertTrue(key.is_private)
-        self.assertFalse(key.is_public)
-        self.assertIsNotNone(key.material)
-        self.assertIsNotNone(key.public_key)
-        self.assertIsNotNone(key.private_key)
-        self.assertIsNotNone(key.public_jwk)
-        self.assertIsNotNone(key.private_jwk)
-
-        pri_jwk = key.private_jwk
-        pub_jwk = key.public_jwk
-        print pri_jwk.to_json()
-        print pub_jwk.to_json()
-        self.assertEqual(pri_jwk.n, pub_jwk.n)
-        self.assertEqual(pri_jwk.e, pub_jwk.e)
-        self.assertEqual(pub_jwk.d, '')
-
-        pub_new = KeyTypeEnum.EC.create_key(jwk=pub_jwk)
-        pri_new = KeyTypeEnum.EC.create_key(jwk=pri_jwk)
-        self.assertEqual(key.public_tuple, pub_new.public_tuple)
-        self.assertEqual(key.private_tuple, pri_new.private_tuple)
-
-        # Signature
-        from ecdsa.ecdsa import string_to_int, Signature
-        from hashlib import sha512
-        from uuid import uuid1
-        rnd = uuid1().int
-        msg = "hello, it's me."
-        digest = string_to_int(sha512(msg).digest())
-        signature_new = pri_new.material.sign(digest, rnd)
-        self.assertTrue(isinstance(signature_new, Signature))
-        self.assertEqual(type(signature_new.r), long)
-        self.assertEqual(type(signature_new.s), long)
-
-        #Verify
-        self.assertTrue(
-            pub_new.material.verifies(digest, signature_new))
 
 
 if __name__ == '__main__':
