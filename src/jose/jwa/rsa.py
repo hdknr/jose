@@ -162,14 +162,18 @@ class PS512(object):
 from Crypto.Cipher import PKCS1_v1_5, PKCS1_OAEP
 
 
-class RSA1_5(object):
+class RsaKeyEncryptor(object):
+    pass
+
+
+class RSA1_5(RsaKeyEncryptor):
     _padding = PKCS1_v1_5
 
     def get_cipher(self):
         pass
 
 
-class RSA_OAEP(object):
+class RSA_OAEP(RsaKeyEncryptor):
     _padding = PKCS1_OAEP
 
     def get_cipher(self):

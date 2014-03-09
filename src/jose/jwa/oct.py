@@ -48,3 +48,4 @@ class Key(BaseKey):
     @property
     def is_public(self):
         return self.material is not None
+

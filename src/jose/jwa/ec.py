@@ -164,3 +164,23 @@ class ES384(EcdsaSigner):
 
 class ES512(EcdsaSigner):
     _digester = 'sha512'
+
+
+class EcdhKeyEncryotor(object):
+    pass
+
+
+class ECDH_ES(EcdhKeyEncryotor):
+    pass
+
+
+class ECDH_ES_A128KW(EcdhKeyEncryotor):
+    pass
+
+
+class ECDH_ES_A192KW(EcdhKeyEncryotor):
+    pass
+
+
+class ECDH_ES_A245KW(EcdhKeyEncryotor):
+    pass
