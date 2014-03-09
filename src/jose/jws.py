@@ -97,9 +97,9 @@ class Signature(BaseObject):
         return ".".join([self.protected, b64_payload, self.signature])
 
     def verify(self, b64_payload, verifying_jwk=None):
-        jws = self.to_jws()
-        b64_header = self.protected
+        b64_header = self.protected         # TODO: Check spec
         s_input = ".".join([b64_header, b64_payload])
+        jws = self.to_jws()
         return jws.verify(
             s_input,
             base64.base64url_decode(self.signature),
@@ -147,11 +147,13 @@ class Message(BaseObject):
         signature.sign(self.payload)
         self.append(signature)
 
+
     @classmethod
     def from_token(cls, token):
         '''
             :param token: Serialized Jws (JSON or Compact)
         '''
+
         try:
             return cls.from_json(token)
 

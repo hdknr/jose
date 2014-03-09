@@ -2,8 +2,12 @@ from jose import BaseKey
 from jose.utils import base64
 from jose.jwk import Jwk
 from jose.jwa.keys import CurveEnum, KeyTypeEnum
+import hashlib
 
+from Crypto.Util.number import long_to_bytes, bytes_to_long
 from ecc.Key import Key as EccKey
+from ecc import ecdsa
+from math import ceil
 
 _jwk_to_pub = lambda jwk: (
     jwk.crv.bits, (
@@ -33,6 +37,10 @@ class Key(BaseKey):
             curve = CurveEnum.create(curve)
         if curve:
             self.material = EccKey.generate(curve.bits)
+
+    @property
+    def block_size(self):
+        return int(ceil(self.public_key._pub[0] / 8.0))
 
     @property
     def is_private(self):
@@ -83,13 +91,76 @@ class Key(BaseKey):
         return jwk
 
 
-class ES256(object):
-    pass
+class EcdsaSigner(object):
+
+    @classmethod
+    def decode_signature(cls, bytes_sig):
+        length = len(bytes_sig) / 2
+        return (
+            bytes_to_long(bytes_sig[:length]),
+            bytes_to_long(bytes_sig[length:])
+        )
+
+    @classmethod
+    def encode_signature(cls, (r, s), block_size=None):
+        '''
+            :param cls:
+            :param (r, s): signagure tuple
+            :param int block_size: Key block size to pad "\00"s
+        '''
+        sig = "".join([
+            long_to_bytes(r, block_size),
+            long_to_bytes(s, block_size),
+        ])
+        return sig
+
+    def digest(self, data):
+        return hashlib.new(self._digester, data).digest()
+
+    def longdigest(self, data):
+        return int(self.hexdigest(data), 16)
+
+    def hexdigest(self, data):
+        return hashlib.new(self._digester, data).hexdigest()
+
+    def sign_to_tuple(self, jwk, data):
+        assert jwk.key is not None and jwk.key.is_private
+        dig_long = self.longdigest(data)
+        r, s = ecdsa.sign(dig_long,
+                          jwk.key.private_key._priv)
+        return (r, s)
+
+    def verify_from_tuple(self, jwk, data, sig_in_tuple):
+        assert jwk.key is not None
+        assert type(sig_in_tuple) == tuple
+
+        dig_long = self.longdigest(data)
+        return ecdsa.verify(dig_long, sig_in_tuple,
+                            jwk.key.public_key._pub)
+
+    def sign(self, jwk, data):
+        tuple_sig = self.sign_to_tuple(jwk, data)
+        return self.encode_signature(tuple_sig, jwk.key.block_size)
+
+    def verify(self, jwk, data, signature):
+        '''
+            :param Jwk jwk: Jwk instannce
+            :param str data: source data byte array
+            :param str signature: dignature byte array
+
+        '''
+        assert jwk.key is not None
+        tuple_sig = self.decode_signature(signature)
+        return self.verify_from_tuple(jwk, data, tuple_sig)
 
 
-class ES384(object):
-    pass
+class ES256(EcdsaSigner):
+    _digester = 'sha256'
 
 
-class ES512(object):
-    pass
+class ES384(EcdsaSigner):
+    _digester = 'sha384'
+
+
+class ES512(EcdsaSigner):
+    _digester = 'sha512'

@@ -218,6 +218,80 @@ class TestJws(unittest.TestCase):
         self.assertTrue(msg3.verify(pub_jwk))
         self.assertFalse(msg3.verify(new_pub))
 
+    def test_jws_appendix_a4(self):
+
+        #: Data
+        header_b64 = 'eyJhbGciOiJFUzUxMiJ9'
+        payload_b64 = "UGF5bG9hZA"
+        signature_b64 = ''.join([
+            'AdwMgeerwtHoh-l192l60hp9wAHZFVJbLfD_UxMi70cwnZOYaRI1bKPWROc-mZZq',
+            'wqT2SI-KGDKB34XO0aw_7XdtAG8GaSwFKdCAPZgoXD2YBJZCPEX3xKpRwcdOO8Kp',
+            'EHwJjyqOgzDO7iKvU8vcnwNrmxYbSW9ERBXukOXolLzeO_Jn',
+        ])
+
+        jws = Jws.from_base64(header_b64)
+        self.assertIsNotNone(jws)
+        self.assertEqual(jws.alg, SigEnum.ES512)
+
+        jwk_str = '''
+ {"kty":"EC",
+  "crv":"P-521",
+  "x":"AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk",
+  "y":"ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2",
+  "d":"AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C"
+ }'''
+        import json
+        from Crypto.Util.number import long_to_bytes, bytes_to_long
+
+        jwk_dict = json.loads(jwk_str)
+
+        #: Key
+        jwk = Jwk.from_json(jwk_str)
+        pub_jwk = jwk.public_jwk
+        self.assertEqual(
+            pub_jwk.key.public_key._pub[1],
+            (
+                bytes_to_long(base64.base64url_decode(jwk_dict['x'])),
+                bytes_to_long(base64.base64url_decode(jwk_dict['y'])),
+            )
+        )
+
+        # Verify
+        jws_token = ".".join([header_b64, payload_b64, signature_b64])
+        msg = Message.from_token(jws_token)
+        self.assertIsNotNone(msg)
+        self.assertEqual(len(msg.signatures), 1)
+        self.assertEqual(msg.signatures[0].signature, signature_b64)
+
+
+        from jose.jwa.ec import EcdsaSigner
+        sigbytes = base64.base64url_decode(msg.signatures[0].signature)
+        self.assertEqual(len(sigbytes), 132)
+        (r, s) = EcdsaSigner.decode_signature(sigbytes)
+
+
+        R = [
+            1, 220, 12, 129, 231, 171, 194, 209, 232, 135, 233,
+            117, 247, 105, 122, 210, 26, 125, 192, 1, 217, 21, 82,
+            91, 45, 240, 255, 83, 19, 34, 239, 71, 48, 157, 147,
+            152, 105, 18, 53, 108, 163, 214, 68, 231, 62, 153, 150,
+            106, 194, 164, 246, 72, 143, 138, 24, 50, 129, 223, 133,
+            206, 209, 172, 63, 237, 119, 109]
+
+        S = [
+            0, 111, 6, 105, 44, 5, 41, 208, 128, 61, 152, 40, 92,
+            61, 152, 4, 150, 66, 60, 69, 247, 196, 170, 81, 193,
+            199, 78, 59, 194, 169, 16, 124, 9, 143, 42, 142, 131,
+            48, 206, 238, 34, 175, 83, 203, 220, 159, 3, 107, 155,
+            22, 27, 73, 111, 68, 68, 21, 238, 144, 229, 232, 148,
+            188, 222, 59, 242, 103]
+
+        self.assertEqual(r, bytes_to_long("".join(chr(i) for i in R)))
+        self.assertEqual(s, bytes_to_long("".join(chr(i) for i in S)))
+
+
+        self.assertTrue(msg.verify(pub_jwk))
+
 
 if __name__ == '__main__':
     unittest.main()

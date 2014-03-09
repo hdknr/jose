@@ -5,7 +5,7 @@ __build__ = ''
 import json
 from enum import Enum
 import os
-from jose.utils import import_class
+from jose.utils import import_class, base64
 
 
 def get_version():
@@ -76,6 +76,10 @@ class BaseObject(object):
         base = base or cls
         obj = base(**json.loads(json_str))
         return obj
+
+    @classmethod
+    def from_base64(cls, b64_str, base=None):
+        return cls.from_json(base64.base64url_decode(b64_str), base)
 
     def save(self, entity_id="me", id=None, *args, **kwargs):
         conf.store.save(self, entity_id, id, *args, **kwargs)

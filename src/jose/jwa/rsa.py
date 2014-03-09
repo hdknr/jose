@@ -1,5 +1,5 @@
 from Crypto.PublicKey import RSA
-from Crypto.Hash import SHA, SHA256, SHA384, SHA512
+from Crypto.Hash import SHA256, SHA384, SHA512
 from Crypto.Signature import PKCS1_v1_5
 #
 from jose.utils import base64
@@ -110,9 +110,7 @@ class Key(BaseKey):
              not self.material.d)
 
 
-class RS256(object):
-    _digester = SHA256
-    _signer = PKCS1_v1_5
+class RsaSigner(object):
 
     def digest(self, data):
         return self._digester.new(data).digest()
@@ -134,12 +132,19 @@ class RS256(object):
         return verifier.verify(dig, signature)
 
 
-class RS384(object):
+class RS256(RsaSigner):
+    _digester = SHA256
+    _signer = PKCS1_v1_5
+
+
+class RS384(RsaSigner):
     _digester = SHA384
+    _signer = PKCS1_v1_5
 
 
-class RS512(object):
+class RS512(RsaSigner):
     _digester = SHA512
+    _signer = PKCS1_v1_5
 
 
 class PS256(object):
