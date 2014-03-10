@@ -178,7 +178,7 @@ class RSA1_5(RsaKeyEncryptor):
     _cipher = PKCS1_v1_5_ENC
 
     def decrypt(self, key, cek_ci, *args, **kwargs):
-        sentinel = "xxxxxxx"
+        sentinel = "TODO:CHECK THIS"
         return self._cipher.new(key).decrypt(cek_ci, sentinel)
 
 
