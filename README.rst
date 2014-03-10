@@ -38,3 +38,8 @@ For convenience, there is a setup.py in hdknr fork :
 .. code-block:: bash
 
     $ pip install -e git+https://github.com/hdknr/AES-GCM-Python#egg=aes_gcm
+
+Also, make to work with GCM192, 256:
+
+    https://github.com/hdknr/AES-GCM-Python/commit/07d58bc0a81fbf9bdeea85b45bb42ca8cdd7c512
+

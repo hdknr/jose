@@ -1,6 +1,10 @@
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256, SHA384, SHA512
 from Crypto.Signature import PKCS1_v1_5
+from Crypto.Cipher import (
+    PKCS1_v1_5 as PKCS1_v1_5_ENC,
+    PKCS1_OAEP
+)
 #
 from jose.utils import base64
 from jose import BaseKey
@@ -159,22 +163,27 @@ class PS512(object):
     pass
 
 
-from Crypto.Cipher import PKCS1_v1_5, PKCS1_OAEP
-
+## Key Encryption
 
 class RsaKeyEncryptor(object):
-    pass
+
+    def encrypt(self, key, cek, *args, **kwargs):
+        return self._cipher.new(key).encrypt(cek)
+
+    def decrypt(self, key, cek_ci, *args, **kwargs):
+        raise NotImplemented()
 
 
 class RSA1_5(RsaKeyEncryptor):
-    _padding = PKCS1_v1_5
+    _cipher = PKCS1_v1_5_ENC
 
-    def get_cipher(self):
-        pass
+    def decrypt(self, key, cek_ci, *args, **kwargs):
+        sentinel = "xxxxxxx"
+        return self._cipher.new(key).decrypt(cek_ci, sentinel)
 
 
 class RSA_OAEP(RsaKeyEncryptor):
-    _padding = PKCS1_OAEP
+    _cipher = PKCS1_OAEP
 
-    def get_cipher(self):
-        pass
+    def decrypt(self, key, cek_ci, *args, **kwargs):
+        return self._cipher.new(key).decrypt(cek_ci)

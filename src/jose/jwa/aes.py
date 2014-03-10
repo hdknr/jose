@@ -46,23 +46,23 @@ class AesContentEncrypor(object):
         al = to_al(assoc)
         return assoc + iv + ciphert + al
 
-    def make_tag(self, mac_k, ciphert, iv, assoc):
-        mac_i = self.mac_input(ciphert, iv, assoc)
+    def make_tag(self, mac_k, ciphert, iv, aad):
+        mac_i = self.mac_input(ciphert, iv, aad)
         hmac = HMAC.new(mac_k, digestmod=self._HASH)
         hmac.update(mac_i)
         return hmac.digest()[:self._TAG_LEN]
 
-    def encrypt(self, cek, plaint, iv, assoc):
+    def encrypt(self, cek, plaint, iv, aad):
         mac_k, enc_k = self.unpack_key(cek)
         ci = AES.new(enc_k, AES.MODE_CBC, iv)
         ciphert = ci.encrypt(pkcs5_pad(plaint))
-        tag = self.make_tag(mac_k, ciphert, iv, assoc)
+        tag = self.make_tag(mac_k, ciphert, iv, aad)
 
         return (ciphert, tag)
 
-    def decrypt(self, cek, ciphert, iv, assoc, tag):
+    def decrypt(self, cek, ciphert, iv, aad, tag):
         mac_k, enc_k = self.unpack_key(cek)
-        if tag != self.make_tag(mac_k, ciphert, iv, assoc):
+        if tag != self.make_tag(mac_k, ciphert, iv, aad):
             return (None, False)
 
         ci = AES.new(enc_k, AES.MODE_CBC, iv)

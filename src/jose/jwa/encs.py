@@ -21,9 +21,9 @@ KeyEncDict = dict(
     ECDH_ES_A256KW='ECDH-ES+A256KW',        # Key Wrapping
 
     # JWA 4.7 - Encryption AES GCM
-    A128GCMKW='A128GCMKW',
-    A192GCMKW='A192GCMKW',
-    A256GCMKW='A256GCMKW',
+    GCMA128KW='A128GCMKW',
+    GCMA192KW='A192GCMKW',
+    GCMA256KW='A256GCMKW',
 
     # JWA 4.8 - Encryption PBES2
     PBES2_HS256_A128KW='PBES2-HS256+A128KW',
@@ -34,8 +34,13 @@ KeyEncDict = dict(
 
 class KeyEncEnumBase(AlgorithmBaseEnum):
     def get_encryptor(self):
-        pass
-
+        import rsa
+        import ec
+        import pbes2
+        import gcm
+        return getattr(
+            dict(R=rsa, E=ec, P=pbes2, G=gcm)[self.name[0]],
+            self.name)()
 
 KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)
 
@@ -45,9 +50,19 @@ EncDict = dict(
     A128CBC_HS256='A128CBC-HS256',
     A192CBC_HS384='A192CBC-HS384',
     A256CBC_HS512='A256CBC-HS512',
-    A128GCM='A128GCM',
-    A192GCM='A192GCM',
-    A256GCM='A256GCM',
+    GCMA128='A128GCM',
+    GCMA192='A192GCM',
+    GCMA256='A256GCM',
 )
 
-EncEnum = type('EncEnum', (BaseEnum,), EncDict)
+
+class EncEnumBase(BaseEnum):
+    def get_encryptor(self):
+        import gcm
+        import aes
+        return getattr(
+            dict(A=aes, G=gcm)[self.name[0]],
+            self.name)()
+
+
+EncEnum = type('EncEnum', (EncEnumBase,), EncDict)
