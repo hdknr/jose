@@ -6,7 +6,7 @@ from jose.jwk import Jwk
 class Key(BaseKey):
 
     def from_jwk(self, jwk):
-        self.matarial = base64.base64url_decode(jwk.k)
+        self.material = base64.base64url_decode(jwk.k)
 
     def init_material(self, **kwargs):
         self.material = "___TOOD__RANDAM_STRING___"
@@ -49,3 +49,6 @@ class Key(BaseKey):
     def is_public(self):
         return self.material is not None
 
+    @property
+    def shared_key(self):
+        return self.material

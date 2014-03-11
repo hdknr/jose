@@ -218,6 +218,83 @@ class TestJws(unittest.TestCase):
         self.assertTrue(msg3.verify(pub_jwk))
         self.assertFalse(msg3.verify(new_pub))
 
+    def test_jws_appendix_a1(self):
+        '''{"typ":"JWT",
+            "alg":"HS256"}
+
+            {"iss":"joe",
+             "exp":1300819380,
+             "http://example.com/is_root":true}
+        '''
+        jws_oct = [
+            123, 34, 116, 121, 112, 34, 58,
+            34, 74, 87, 84, 34, 44, 13, 10, 32,
+            34, 97, 108, 103, 34, 58, 34,
+            72, 83, 50, 53, 54, 34, 125]
+        jws_b64 = 'eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9'
+        self.assertEqual(
+            ''.join(chr(i) for i in jws_oct),
+            base64.base64url_decode(jws_b64))
+
+        payload_oct = [
+            123, 34, 105, 115, 115, 34, 58,
+            34, 106, 111, 101, 34, 44, 13, 10,
+            32, 34, 101, 120, 112, 34, 58, 49,
+            51, 48, 48, 56, 49, 57, 51, 56,
+            48, 44, 13, 10, 32, 34, 104, 116,
+            116, 112, 58, 47, 47, 101, 120, 97,
+            109, 112, 108, 101, 46, 99, 111, 109,
+            47, 105, 115, 95, 114, 111,
+            111, 116, 34, 58, 116, 114, 117, 101, 125]
+
+        payload_b64 = ''.join([
+            'eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA',
+            '4MTkzODAsDQogImh0dHA6Ly9leGFt',
+            'cGxlLmNvbS9pc19yb290Ijp0cnVlfQ'])
+        self.assertEqual(
+            ''.join(chr(i) for i in payload_oct),
+            base64.base64url_decode(payload_b64))
+
+        sinput_oct =  [
+            101, 121, 74, 48, 101, 88, 65,
+            105, 79, 105, 74, 75, 86, 49, 81,
+            105, 76, 65, 48, 75, 73, 67, 74,
+            104, 98, 71, 99, 105, 79, 105, 74,
+            73, 85, 122, 73, 49, 78, 105, 74,
+            57, 46, 101, 121, 74, 112, 99, 51,
+            77, 105, 79, 105, 74, 113, 98, 50,
+            85, 105, 76, 65, 48, 75, 73, 67,
+            74, 108, 101, 72, 65, 105, 79, 106,
+            69, 122, 77, 68, 65, 52, 77, 84,
+            107, 122, 79, 68, 65, 115, 68, 81,
+            111, 103, 73, 109, 104, 48, 100,
+            72, 65, 54, 76, 121, 57, 108, 101,
+            71, 70, 116, 99, 71, 120, 108, 76,
+            109, 78, 118, 98, 83, 57, 112, 99,
+            49, 57, 121, 98, 50, 57, 48, 73,
+            106, 112, 48, 99, 110, 86, 108, 102, 81]
+        sinput = '.'.join([jws_b64, payload_b64])
+        self.assertEqual(
+            ''.join(chr(i) for i in sinput_oct),
+            sinput)
+
+        jwk_dict = {
+            "kty": "oct",
+            "k": "".join([
+                "AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75",
+                "aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow"])
+        }
+
+        jwk = Jwk(**jwk_dict)
+        sig_b64 = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+
+        jws = Jws.from_base64(jws_b64)
+        sig = jws.alg.create_signer().sign(jwk, sinput)
+        self.assertEqual(sig_b64, base64.base64url_encode(sig))
+
+        self.assertTrue(
+            jws.alg.create_signer().verify(jwk, sinput, sig))
+
     def test_jws_appendix_a4(self):
 
         #: Data
