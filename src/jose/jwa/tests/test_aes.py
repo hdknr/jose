@@ -7,6 +7,37 @@ from jose.jwe import Jwe
 
 
 class TestAes(unittest.TestCase):
+
+    def test_key_wrap(self):
+        # values from Jwe Appendix A.3
+        cek_oct = [
+            4, 211, 31, 197, 84, 157, 252, 254,
+            11, 100, 157, 250, 63, 170, 106, 206,
+            107, 124, 212, 45, 111, 107, 9, 219,
+            200, 177, 0, 240, 143, 156, 44, 207]
+        cek_ci_oct = [
+            232, 160, 123, 211, 183, 76, 245,
+            132, 200, 128, 123, 75, 190, 216,
+            22, 67, 201, 138, 193, 186, 9, 91,
+            122, 31, 246, 90, 28, 139, 57, 3,
+            76, 124, 193, 11, 98, 37, 173, 61, 104, 57]
+
+        cek = ''.join(chr(i) for i in cek_oct)
+        cek_ci = ''.join(chr(i) for i in cek_ci_oct)
+
+        jwk_dict = {
+            "kty": "oct",
+            "k": "GawgguFyGrWKav7AX4VKUg"
+        }
+        kek = base64.base64url_decode(jwk_dict['k'])
+        from jose.jwa.aes import aes_key_wrap, aes_key_unwrap
+
+        rk = aes_key_wrap(kek, cek)
+        self.assertEqual(rk, cek_ci)
+
+        urk = aes_key_unwrap(kek, cek_ci)
+        self.assertEqual(urk, cek)
+
     def test_jwe_appendix_a2(self):
         plaint_oct = [
             76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97, 110, 100, 32,
@@ -142,6 +173,85 @@ class TestAes(unittest.TestCase):
         self.assertTrue(is_valid_2)
         self.assertEqual(p_new_2, plaint)
         print p_new_2
+
+    def test_jwe_appendix_a3(self):
+        # Appendix A.3
+        plaint_oct = [
+            76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97, 110, 100, 32,
+            112, 114, 111, 115, 112, 101, 114, 46]
+        plaint = ''.join(chr(i) for i in plaint_oct)
+        self.assertEqual(plaint, 'Live long and prosper.')
+
+        # Appendix A.3.1
+        jwe_json = '{"alg":"A128KW","enc":"A128CBC-HS256"}'
+        jwe_b64 = 'eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0'
+        self.assertEqual(jwe_json, base64.base64url_decode(jwe_b64))
+        jwe = Jwe.from_json(jwe_json)
+
+        # Appendix A.3.2
+        cek_oct = [
+            4, 211, 31, 197, 84, 157, 252, 254,
+            11, 100, 157, 250, 63, 170, 106, 206,
+            107, 124, 212, 45, 111, 107, 9, 219,
+            200, 177, 0, 240, 143, 156, 44, 207]
+        cek = ''.join(chr(i) for i in cek_oct)
+
+        # Appendix A.3.3
+
+        cek_ci_oct = [
+            232, 160, 123, 211, 183, 76, 245,
+            132, 200, 128, 123, 75, 190, 216,
+            22, 67, 201, 138, 193, 186, 9, 91,
+            122, 31, 246, 90, 28, 139, 57, 3,
+            76, 124, 193, 11, 98, 37, 173, 61, 104, 57]
+        cek_ci = ''.join(chr(i) for i in cek_ci_oct)
+
+        jwk_dict = {
+            "kty": "oct",
+            "k": "GawgguFyGrWKav7AX4VKUg"
+        }
+        kek = base64.base64url_decode(jwk_dict['k'])
+
+        uk = jwe.alg.get_encryptor().encrypt(kek, cek)
+        self.assertEqual(cek_ci, uk)
+
+        # Jwe Appendix A.3.4
+        iv_oct = [
+            3, 22, 60, 12, 43, 67, 104, 105,
+            108, 108, 105, 99, 111, 116, 104, 101]
+        iv = ''.join(chr(i) for i in iv_oct)
+        iv_b64 = 'AxY8DCtDaGlsbGljb3RoZQ'
+        self.assertEqual(iv, base64.base64url_decode(iv_b64))
+
+        # Jwe Appendix A.3.5
+        aad_oct = [
+            101, 121, 74, 104, 98, 71, 99,
+            105, 79, 105, 74, 66, 77, 84,
+            73, 52, 83, 49, 99, 105, 76, 67,
+            74, 108, 98, 109, 77, 105, 79,
+            105, 74, 66, 77, 84, 73, 52, 81,
+            48, 74, 68, 76, 85, 104, 84,
+            77, 106, 85, 50, 73, 110, 48]
+        aad = ''.join(chr(i) for i in aad_oct)
+
+        # Jwe Appendix A.3.6
+        ciphert_oct = [
+            40, 57, 83, 181, 119, 33, 133,
+            148, 198, 185, 243, 24, 152,
+            230, 6, 75, 129, 223, 127, 19,
+            210, 82, 183, 230, 168, 33, 215,
+            104, 143, 112, 56, 102]
+        tag_oct = [
+            83, 73, 191, 98, 104, 205, 211,
+            128, 201, 189, 199, 133, 32, 38, 194, 85]
+        tag = ''.join(chr(i) for i in tag_oct)
+        ciphert = ''.join(chr(i) for i in ciphert_oct)
+
+        pt, v = jwe.enc.get_encryptor().decrypt(cek, ciphert, iv, aad, tag)
+        self.assertTrue(v)
+        self.assertTrue(pt, plaint)
+
+        print pt
 
     def test_jwe_appendix_b2(self):
         plaint_oct = [

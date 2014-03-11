@@ -38,8 +38,9 @@ class KeyEncEnumBase(AlgorithmBaseEnum):
         import ec
         import pbes2
         import gcm
+        import aes
         return getattr(
-            dict(R=rsa, E=ec, P=pbes2, G=gcm)[self.name[0]],
+            dict(R=rsa, E=ec, A=aes, P=pbes2, G=gcm)[self.name[0]],
             self.name)()
 
 KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)

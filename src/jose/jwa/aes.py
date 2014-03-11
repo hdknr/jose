@@ -1,13 +1,87 @@
 from Crypto.Cipher import AES
 from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
+from Crypto.Util.strxor import strxor
 #from Crypto.Util.number import long_to_bytes
 from struct import pack
+
+slice = lambda s, n: [s[i:i + n] for i in range(0, len(s), n)]
+AES_IV = b'\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6'
+
+
+def aes_key_wrap(K, P):
+    """
+    aes key wrap : :rfc:`3394` 2.2.1
+
+        :param str K: key encrytpion key
+        :param str P: plaintext
+    """
+
+    assert len(K) * 8 in [128, 192, 256]  # key bits
+    assert len(P) % 8 == 0     # 64 bit blok
+
+    n = len(P) / 8      # 64 bit blocks
+    A = AES_IV          # Set A = IV
+    R = [b'\0\0\0\0\0\0\0\0'
+         ] + slice(P, 8)     # copy of slice every 8 octets
+                        # For i = 1 to n ; R[i] = P[i]
+
+    _AES = AES.AESCipher(K)
+    for j in range(0, 6):               # For j=0 to 5
+        for i in range(1, n + 1):       # For i=1 to n
+            B = _AES.encrypt(A + R[i])  # B = AES(K, A | R[i])
+            R[i] = B[8:]                # R[i] = LSB(64, B)
+
+            t = pack("!q", (n * j) + i)
+            A = strxor(B[:8], t)
+            # A = MSB(64, B) ^ t where t = (n*j)+i
+
+    R[0] = A            # Set C[0] = A
+    return "".join(R)   # For i = 1 to n C[i] = R[i]
+
+
+def aes_key_unwrap(K, C):
+    """
+    aes key unwrap : :rfc:`3394` 2.2.2
+
+        :param str K: key encrytpion key
+        :param str C: ciphertext
+    """
+
+    assert len(K) * 8 in [128, 192, 256]  # key bits
+    assert len(C) % 8 == 0     # 64 bit blok
+
+    n = len(C) / 8 - 1         # 64bit blocks
+    R = slice(C, 8)
+    A = R[0]                   # Set A = C[0] (=R[0])
+    R[0] = [b'\0\0\0\0\0\0\0\0']
+                               # init R[0]
+                               # For i = 1 to n ; R[i] = C[i]
+
+    _AES = AES.AESCipher(K)
+    for j in range(5, -1, -1):           # For j = 5 to 0
+        for i in range(n, 0, -1):        # For i = n to 1
+            t = pack("!q", (n * j) + i)  # t = n * j + i
+            src = strxor(A, t) + R[i]             # A ^ t
+            B = _AES.decrypt(src)
+            # B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+
+            A = B[:8]                    # A = MSB(64, B)
+            R[i] = B[8:]                 # R[i] = LSB(64, B)
+
+    if A == AES_IV:
+        return "".join(R[1:])   # For i = 1 to n; P[i] = R[i]
+    else:
+        raise Exception("unwrap failed: Invalid IV")
 
 ### Key Encryption
 
 
 class AesKeyEncryptor(object):
-    pass
+    def encrypt(self, key, cek, *args, **kwargs):
+        return aes_key_wrap(key, cek)
+
+    def decrypt(self, key, cek_ci, *args, **kwargs):
+        return aes_key_unwrap(key, cek_ci)
 
 
 class A128KW(AesKeyEncryptor):
