@@ -1,6 +1,6 @@
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256, SHA384, SHA512
-from Crypto.Signature import PKCS1_v1_5
+from Crypto.Signature import PKCS1_v1_5, PKCS1_PSS
 from Crypto.Cipher import (
     PKCS1_v1_5 as PKCS1_v1_5_ENC,
     PKCS1_OAEP
@@ -151,16 +151,25 @@ class RS512(RsaSigner):
     _signer = PKCS1_v1_5
 
 
-class PS256(object):
-    pass
+class PS256(RsaSigner):
+    ''' RSASSA-PSS using SHA-256 and MGF1 with SHA-256
+    '''
+    _digester = SHA256
+    _signer = PKCS1_PSS
 
 
-class PS384(object):
-    pass
+class PS384(RsaSigner):
+    ''' RSASSA-PSS using SHA-384 and MGF1 with SHA-384
+    '''
+    _digester = SHA384
+    _signer = PKCS1_PSS
 
 
-class PS512(object):
-    pass
+class PS512(RsaSigner):
+    ''' RSASSA-PSS using SHA-512 and MGF1 with SHA-512
+    '''
+    _digester = SHA512
+    _signer = PKCS1_PSS
 
 
 ## Key Encryption

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from jose.jwa.sigs import SigEnum
+from jose.jwa.keys import KeyTypeEnum
 
 
 class TestRsaKey(unittest.TestCase):
@@ -72,7 +74,6 @@ class TestRsaKey(unittest.TestCase):
         print pub.exportKey('PEM')
 
     def test_jwk(self):
-        from jose.jwa.keys import KeyTypeEnum
         from jose.jwa.rsa import Key
 
         # void key
@@ -109,6 +110,17 @@ class TestRsaKey(unittest.TestCase):
         self.assertEqual(key.public_tuple, pub_new.public_tuple)
         self.assertEqual(key.private_tuple, pri_new.private_tuple)
 
+    def test_pss(self):
+        msg = "Life is very long when you are lonely."
+
+        key = KeyTypeEnum.RSA.create_key()
+        key.init_material()
+        jwk = key.private_jwk
+
+        for sig in [SigEnum.PS256, SigEnum.PS384, SigEnum.RS512]:
+            pss = sig.create_signer()
+            sig = pss.sign(jwk, msg)
+            self.assertTrue(pss.verify(jwk, msg, sig))
 
 
 if __name__ == '__main__':
