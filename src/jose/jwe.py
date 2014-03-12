@@ -66,6 +66,12 @@ class Jwe(Crypto):
     def to_token(self):
         return ''
 
+    def provide_key(self, jwk):
+        return self.alg.encryptor.provide(jwk, self)
+
+    def agree_key(self, cek_ci, jwk):
+        return self.alg.encryptor.agree(jwk, self, cek_ci)
+
 
 class Recipient(BaseObject):
     _fields = dict(

@@ -183,6 +183,16 @@ class RsaKeyEncryptor(BaseKeyEncryptor):
     def encrypt(cls, key, cek, *args, **kwargs):
         return cls._cipher.new(key).encrypt(cek)
 
+    @classmethod
+    def provide(cls, jwk, jwe, *args, **kwargs):
+        cek, iv = jwe.enc.encryptor.create_key_iv()
+        cek_ci = cls.encrypt(jwk.key.public_key, cek)
+        return cek, iv, cek_ci
+
+    @classmethod
+    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+        return cls.decrypt(jwk.key.private_key, cek_ci)
+
 
 class RSA1_5(RsaKeyEncryptor):
     _cipher = PKCS1_v1_5_ENC
@@ -199,3 +209,21 @@ class RSA_OAEP(RsaKeyEncryptor):
     @classmethod
     def decrypt(cls, key, cek_ci, *args, **kwargs):
         return cls._cipher.new(key).decrypt(cek_ci)
+
+if __name__ == '__main__':
+    from jose.jwe import Jwe
+    from jose.jwa.keys import KeyTypeEnum
+
+    jwk = Jwk.generate(kty=KeyTypeEnum.RSA)
+    jwe = Jwe.from_json('{"alg": "RSA1_5", "enc": "A128CBC-HS256"}')
+    cek, iv, cek_ci = jwe.provide_key(jwk)
+
+    print "CEK", base64.base64url_encode(cek)
+    print "IV", base64.base64url_encode(iv)
+    print "CEK_CI", base64.base64url_encode(cek_ci)
+
+    cek2 = jwe.agree_key(cek_ci, jwk)
+    print "CEK2", base64.base64url_encode(cek_ci)
+    print "IV", base64.base64url_encode(iv)
+
+    assert cek == cek2

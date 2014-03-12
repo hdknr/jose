@@ -100,20 +100,3 @@ class JwkSet(BaseObject):
     _fields = dict(
         keys=[]     # JwkSet list
     )
-
-
-#class JwkPair(BaseObject):
-#
-#    def __init__(self, pri=None, pub=None,
-#                 kty=keys.KeyTypeEnum.RSA, **kwargs):
-#
-#        self.pri = pri or Jwk(kty=kty, **kwargs)
-#        self.pub = pub or Jwk(kty=kty, **kwargs)
-#
-##        #if not pri:
-##            kty.get_class().generate(self, **kwargs)
-#
-#
-#class JwkPairSet(BaseObject):
-#    def __init__(self, entity_id):
-#        self.entity_id = entity_id

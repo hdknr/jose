@@ -121,20 +121,20 @@ class BaseKey(object):
 
 
 class BaseKeyEncryptor(object):
+#    @classmethod
+#    def encrypt(self, key, cek, *args, **kwargs):
+#        raise NotImplemented()
+#
+#    @classmethod
+#    def decrypt(self, key, cek_ci, *args, **kwargs):
+#        raise NotImplemented()
+
     @classmethod
-    def encrypt(self, key, cek, *args, **kwargs):
+    def provide(cls, jwk, jwe, *args, **kwargs):
         raise NotImplemented()
 
     @classmethod
-    def decrypt(self, key, cek_ci, *args, **kwargs):
-        raise NotImplemented()
-
-    @classmethod
-    def provide(cls, jwe, *args, **kwargs):
-        raise NotImplemented()
-
-    @classmethod
-    def aggree(cls, jwe, cek_ci, *args, **kwargs):
+    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
         raise NotImplemented()
 
 
