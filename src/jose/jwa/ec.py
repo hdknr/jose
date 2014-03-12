@@ -246,9 +246,9 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
     @classmethod
     def other_info(cls, jwe):
         klen = cls.digest_key_bitlength(jwe)
-        #: TODO: ECDH-ES use enc name, ECDH-EC+KW may use KW alg name
-        return other_info(
-            jwe.enc.value, jwe.apu, jwe.apv, klen)
+        #: AlgorithmID : enc(ECDH-ES), alg(ECDH-AnnnKW)
+        algid = jwe.alg.value if cls._KEY_WRAP else jwe.enc.value
+        return other_info(algid, jwe.apu, jwe.apv, klen)
 
     @classmethod
     def create_key(cls, jwe, agr, cek=None):
