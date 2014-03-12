@@ -255,7 +255,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
         oi = cls.other_info(jwe)
         klen = cls.digest_key_bitlength(jwe)
         dkey = ConcatKDF(agr, klen, oi)
-        if cls._KEY_WRAP:
+        if cls._KEY_WRAP and cek:
             cek_ci = cls._KEY_WRAP.encrypt(dkey, cek)
             return (dkey, cek_ci)
         else:
@@ -263,15 +263,25 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
 
     @classmethod
     def provide(cls, jwk, jwe, *args, **kwargs):
-        raise Exception("implement later")
-        cek, iv, cek_ci = None, None, None
+        jwe.apu = jwe.apu or "TODO:RANDOM APU"
+        jwe.apv = jwe.apv or "TODO:RANDOM APv"
+
+        cek, iv = jwe.enc.encryptor.create_key_iv()
+        epk = Jwk.generate(kty=KeyTypeEnum.EC)
+        agr = epk.key.agreement_to(jwk.key)
+        key, cek_ci = cls.create_key(jwe, agr, cek)
+        cek = cek if cls._KEY_WRAP else key
+        jwe.epk = epk.public_jwk
         return (cek, iv, cek_ci)
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
-        raise Exception("implement later")
-        cek = None
-        return cek
+        agr = jwk.key.agreement_to(jwe.epk.key)
+        key, _dmy = cls.create_key(jwe, agr, None)
+        if cek_ci:
+            return cls._KEY_WRAP.decrypt(key, cek_ci)
+        else:
+            return key
 
 
 class ECDH_ES(EcdhKeyEncryotor):
