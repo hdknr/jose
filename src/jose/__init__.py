@@ -78,6 +78,13 @@ class BaseObject(object):
         return obj
 
     @classmethod
+    def from_file(cls, json_file, base=None):
+        base = base or cls
+        with open(json_file) as data:
+            obj = base(**json.load(data))
+        return obj
+
+    @classmethod
     def from_base64(cls, b64_str, base=None):
         return cls.from_json(base64.base64url_decode(b64_str), base)
 
@@ -139,6 +146,8 @@ class BaseKeyEncryptor(object):
 
 
 class BaseContentEncryptor(object):
+    _KEY_LEN = None
+
     @classmethod
     def create_key_iv(cls):
         from Crypto import Random
@@ -146,6 +155,10 @@ class BaseContentEncryptor(object):
             Random.get_random_bytes(cls._KEY_LEN),
             Random.get_random_bytes(cls._IV_LEN),
         )
+
+    @classmethod
+    def key_length(cls):
+        return cls._KEY_LEN
 
 
 class BaseStore(object):

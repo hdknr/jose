@@ -80,6 +80,10 @@ from jose import BaseKeyEncryptor
 
 class AesKeyEncryptor(BaseKeyEncryptor):
     @classmethod
+    def key_length(cls):
+        return cls._KEY_LEN
+
+    @classmethod
     def encrypt(cls, key, cek, *args, **kwargs):
         return aes_key_wrap(key, cek)
 

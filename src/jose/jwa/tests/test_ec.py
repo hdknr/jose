@@ -4,7 +4,7 @@ import unittest
 from jose.utils import base64
 
 
-class TestEcKeyEcc(unittest.TestCase):
+class TestEcEcc(unittest.TestCase):
 
     def test_generate(self):
         from ecc.Key import Key
@@ -57,7 +57,7 @@ class TestEcKeyEcc(unittest.TestCase):
         # Secrete Agreeed!
         self.assertEqual(shared_secret_u, shared_secret_v)
 
-    def test_ecdh(self):
+    def test_ecdh_check(self):
         '''
 https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         '''
@@ -118,6 +118,9 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         # Party U compute
         u_crv = _curve(u_epk._priv[0])
         shared_secret_u = _dhZ(u_crv, v_pub._pub[1], u_epk._priv[1])
+        print "@@@ CURV", u_crv, ":", shared_secret_u
+
+        print "Aggreement:", base64.long_to_b64(shared_secret_u)
 
         from Crypto.Util.number import long_to_bytes
         from math import ceil
@@ -206,6 +209,81 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
 
         self.assertEqual("VqqN6vgjbSBcIijNcacQGg",
                          base64.base64url_encode(_derived_key_u))
+
+    def test_ecdh_impl(self):
+        '''
+https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
+        '''
+
+        v_stc_material = {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0",
+            "y": "SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps",
+            "d": "0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo"
+        }
+
+        u_epk_material = {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "weNJy2HscCSM6AEDTDg04biOvhFhyyWvOHQfeF_PxMQ",
+            "y": "e8lnCO-AlStT-NJVX-crhB7QRYhiix03illJOVAOyck",
+            "d": "VEmDZpDXXK8p8N0Cndsxs924q6nS1RXFASRl6BfUqdw"
+        }
+
+        from jose.jwk import Jwk
+
+        v_stc_jwk = Jwk(**v_stc_material)
+        u_epk_jwk = Jwk(**u_epk_material)
+
+        #: Agreement
+        Zu = u_epk_jwk.key.agreement_to(v_stc_jwk.key)
+        Z_jwa = [158, 86, 217, 29, 129, 113, 53,
+                 211, 114, 131, 66, 131, 191, 132,
+                 38, 156, 251, 49, 110, 163, 218,
+                 128, 106, 72, 246, 218, 167, 121,
+                 140, 254, 144, 196]
+
+        self.assertEqual([ord(i) for i in Zu], Z_jwa)
+
+        from jose.jwe import Jwe
+        from jose.jwa.ec import ECDH_ES
+
+        jwe = Jwe(enc='A128GCM',
+                  apu='Alice', apv='Bob')
+        oi_u = ECDH_ES.other_info(jwe)
+        oi_jwa = [
+            0, 0, 0, 7,
+            65, 49, 50, 56, 71, 67, 77,
+            0, 0, 0, 5,
+            65, 108, 105, 99, 101,
+            0, 0, 0, 3,
+            66, 111, 98,
+            0, 0, 0, 128]
+
+        self.assertEqual([ord(i) for i in oi_u], oi_jwa)
+
+        #: Derive Key for ECDH Agreement
+        _derived_key_u, cek_ci_u = ECDH_ES.create_key(jwe, Zu)
+        self.assertIsNone(cek_ci_u)
+
+        # --- Party V
+        # Agreement
+        Zv = v_stc_jwk.key.agreement_to(u_epk_jwk.key)
+        _derived_key_v, cek_ci_v = ECDH_ES.create_key(jwe, Zv)
+        self.assertIsNone(cek_ci_v)
+
+        self.assertEqual(_derived_key_u, _derived_key_v)
+
+        kd_jwa = [
+            86, 170, 141, 234, 248, 35, 109, 32,
+            92, 34, 40, 205, 113, 167, 16, 26]
+
+        self.assertEqual(len(_derived_key_v), len(kd_jwa))
+        self.assertEqual([ord(i) for i in _derived_key_u], kd_jwa)
+        self.assertEqual("VqqN6vgjbSBcIijNcacQGg",
+                         base64.base64url_encode(_derived_key_u))
+
 
     def test_jwk(self):
         from jose.jwa.keys import KeyTypeEnum, CurveEnum

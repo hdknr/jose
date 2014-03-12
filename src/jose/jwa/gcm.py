@@ -51,6 +51,11 @@ class GCMA256(GcmContentEncryptor):
 
 
 class GcmKeyEncryptor(BaseKeyEncryptor):
+
+    @classmethod
+    def key_length(cls):
+        return cls._enc.key_length()
+
     @classmethod
     def provide(cls, jwk, jwe, *args, **kwargs):
         key = jwk.key.shared_key[:cls._enc._KEY_LEN]

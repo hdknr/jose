@@ -1,13 +1,17 @@
 from jose import BaseKey, BaseKeyEncryptor
 from jose.utils import base64
 from jose.jwk import Jwk
+from jose.jwa.aes import A128KW, A192KW, A256KW
 from jose.jwa.keys import CurveEnum, KeyTypeEnum
 import hashlib
 
 from Crypto.Util.number import long_to_bytes, bytes_to_long
+from Crypto.Hash import SHA256
 from ecc.Key import Key as EccKey
-from ecc import ecdsa
+from ecc import ecdsa, elliptic, curves
 from math import ceil
+
+from struct import pack
 
 _jwk_to_pub = lambda jwk: (
     jwk.crv.bits, (
@@ -19,6 +23,15 @@ _jwk_to_pri = lambda jwk: (
     jwk.crv.bits,
     base64.long_from_b64(jwk.d)
 )
+
+# Compute ECDH
+dhZ = lambda crv, pub, pri: elliptic.mulp(
+    crv['a'], crv['b'], crv['p'], pub, pri)[0]
+
+# Curve Parameter
+curve_parameter = lambda fields: dict(
+    zip(('bits', 'p', 'N', 'a', 'b', 'G'),
+        curves.get_curve(fields)))
 
 
 class Key(BaseKey):
@@ -89,6 +102,19 @@ class Key(BaseKey):
         if jwk:
             jwk.d = base64.long_to_b64(self.material._priv[1])
         return jwk
+
+    def agreement_to(self, other_key, in_bytes=True):
+        pri = self.private_key
+        if pri is None:
+            raise Exception("no private key")
+
+        pub = other_key.public_key
+        _crv = curve_parameter(pri._priv[0])
+        z = dhZ(_crv, pub._pub[1], pri._priv[1])
+
+        if in_bytes:
+            return long_to_bytes(z, self.block_size)
+        return z
 
 
 class EcdsaSigner(object):
@@ -173,28 +199,97 @@ class ES512(EcdsaSigner):
     _digester = 'sha512'
 
 
+# Other Information used in Concat KDF
+# AlgorithmID || PartyUInfo || PartyVInfo || SuppPubInfo
+
+other_info = lambda alg, pu, pv, klen: ''.join([
+    pack("!I", len(alg)), alg,
+    pack("!I", len(pu)), pu,
+    pack("!I", len(pv)), pv,
+    pack("!I", klen), ])
+
+
+# Coccat KDF : NIST defines SHA256
+
+def ConcatKDF(agr, dklen, oi, digest_method=SHA256):
+
+    # Digest source
+    # counter(in bytes), agreement(in bytes), otherinfo
+    _src = lambda cbn: "".join([cbn, agr, oi])
+
+    from math import ceil
+    from struct import pack
+
+    dkm = b''   # Derived Key Material
+    counter = 0
+    klen = int(ceil(dklen / 8.0))
+    while len(dkm) < klen:
+        counter += 1
+        counter_b = pack("!I", counter)
+        dkm += digest_method.new(_src(counter_b)).digest()
+
+    return dkm[:klen]
+
+
 ## Key Encryptor
 
 class EcdhKeyEncryotor(BaseKeyEncryptor):
-    pass
+    _KEY_WRAP = None
+
+    @classmethod
+    def digest_key_bitlength(cls, jwe):
+        if cls._KEY_WRAP:
+            return 8 * cls._KEY_WRAP.key_legnth()
+        else:
+            return 8 * jwe.enc.encryptor.key_length()
+
+    @classmethod
+    def other_info(cls, jwe):
+        klen = cls.digest_key_bitlength(jwe)
+        #: TODO: ECDH-ES use enc name, ECDH-EC+KW may use KW alg name
+        return other_info(
+            jwe.enc.value, jwe.apu, jwe.apv, klen)
+
+    @classmethod
+    def create_key(cls, jwe, agr, cek=None):
+        oi = cls.other_info(jwe)
+        klen = cls.digest_key_bitlength(jwe)
+        dkey = ConcatKDF(agr, klen, oi)
+        if cls._KEY_WRAP:
+            cek_ci = cls._KEY_WRAP.encrypt(dkey, cek)
+            return (dkey, cek_ci)
+        else:
+            return (dkey, None)
+
+    @classmethod
+    def provide(cls, jwk, jwe, *args, **kwargs):
+        raise Exception("implement later")
+        cek, iv, cek_ci = None, None, None
+        return (cek, iv, cek_ci)
+
+    @classmethod
+    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+        raise Exception("implement later")
+        cek = None
+        return cek
 
 
 class ECDH_ES(EcdhKeyEncryotor):
+    #: TODO: CEK is produced by Static Public + Ephemeral Private
+    #:       but, CEK is not deliverd ( means CEK == '' in message )
     pass
-#: TODO: CEK is produced by Static Public + Ephemeral Private
-#:       but, CEK is not deliverd ( means CEK == '' in message )
 
-
-class ECDH_ES_A128KW(EcdhKeyEncryotor):
-    pass
 
 #: TODO: CEK is given
 #       and wrapped by secret from Static Public + Ephemeral Private
 
+class ECDH_ES_A128KW(EcdhKeyEncryotor):
+    _KEY_WRAP = A128KW
+
 
 class ECDH_ES_A192KW(EcdhKeyEncryotor):
-    pass
+    _KEY_WRAP = A192KW
 
 
-class ECDH_ES_A245KW(EcdhKeyEncryotor):
-    pass
+class ECDH_ES_A256KW(EcdhKeyEncryotor):
+    _KEY_WRAP = A256KW
