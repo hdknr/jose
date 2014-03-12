@@ -69,7 +69,7 @@ class Jwe(Crypto):
     def provide_key(self, jwk):
         return self.alg.encryptor.provide(jwk, self)
 
-    def agree_key(self, cek_ci, jwk):
+    def agree_key(self, jwk, cek_ci):
         return self.alg.encryptor.agree(jwk, self, cek_ci)
 
 

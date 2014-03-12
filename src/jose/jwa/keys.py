@@ -14,13 +14,13 @@ class BaseKeyTypeEnum(BaseEnum):
     def get_key_class(self, *args, **kwargs):
         import rsa
         import ec
-        import oct
+        import shared
 
         return dict(
             RSA=rsa.Key,
             EC=ec.Key,
-            oct=oct.Key,
-        )[self.value]
+            OCT=shared.Key,
+        )[self.name]
 
     def create_key(self, *args, **kwargs):
         return self.get_key_class()(self, *args, **kwargs)
@@ -80,3 +80,8 @@ class Symmetric(object):
     _fields = dict(
         k="",      #: Shared key
     )
+
+
+if __name__ == '__main__':
+    for kty in ['RSA', 'EC', 'oct']:
+        assert KeyTypeEnum.create(kty) is not None

@@ -26,6 +26,7 @@ class Key(BaseKey):
     @property
     def private_jwk(self):
         jwk = Jwk(
+            kty="oct",
             k=base64.base64url_encode(self.material),
         )
         return jwk
@@ -56,5 +57,8 @@ class Key(BaseKey):
 
 if __name__ == '__main__':
     from jose.jwa.keys import KeyTypeEnum
-    jwk = Jwk.generate(KeyTypeEnum.create('oct'))
+    jwk = Jwk.generate(kty=KeyTypeEnum.create('oct'))
     assert len(jwk.key.shared_key) == 200
+
+    jwk = Jwk.generate(kty=KeyTypeEnum.create('oct'), length=32)
+    assert len(jwk.key.shared_key) == 32

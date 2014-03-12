@@ -69,7 +69,7 @@ class Key(BaseKey):
             return None
 
         jwk = Jwk(
-            kty=self.kty,
+            kty="RSA",
             n=base64.long_to_b64(self.material.n),
             e=base64.long_to_b64(self.material.e),
             d=base64.long_to_b64(self.material.d),
@@ -84,7 +84,7 @@ class Key(BaseKey):
         if not self.material:
             return None
         jwk = Jwk(
-            kty=self.kty,
+            kty="RSA",
             n=base64.long_to_b64(self.material.n),
             e=base64.long_to_b64(self.material.e),
         )

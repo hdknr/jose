@@ -91,6 +91,8 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
 
     @classmethod
     def generate(cls, kty=keys.KeyTypeEnum.RSA, *args, **kwargs):
+        if isinstance(kty, basestring):
+            kty = keys.KeyTypeEnum.create(kty)
         key = kty.create_key()
         key.init_material(*args, **kwargs)
         return key.private_jwk
