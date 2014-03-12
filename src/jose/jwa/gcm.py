@@ -54,7 +54,8 @@ class GcmKeyEncryptor(BaseKeyEncryptor):
     @classmethod
     def provide(cls, jwk, jwe, *args, **kwargs):
         key = jwk.key.shared_key[:cls._enc._KEY_LEN]
-        cek, iv = cls._enc.create_key_iv()
+        _enc = jwe.enc.encryptor
+        cek, iv = _enc.create_key_iv()
         cek_ci, tag = cls._enc.encrypt(key, cek, iv, "")
 
         jwe.iv = base64.base64url_encode(iv)

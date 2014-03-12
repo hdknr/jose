@@ -79,23 +79,43 @@ from jose import BaseKeyEncryptor
 
 
 class AesKeyEncryptor(BaseKeyEncryptor):
-    def encrypt(self, key, cek, *args, **kwargs):
+    @classmethod
+    def encrypt(cls, key, cek, *args, **kwargs):
         return aes_key_wrap(key, cek)
 
-    def decrypt(self, key, cek_ci, *args, **kwargs):
+    @classmethod
+    def decrypt(cls, key, cek_ci, *args, **kwargs):
         return aes_key_unwrap(key, cek_ci)
+
+    @classmethod
+    def provide(cls, jwk, jwe, *args, **kwargs):
+        key = jwk.key.shared_key[:cls._KEY_LEN]
+        _enc = jwe.enc.encryptor
+        cek, iv = _enc.create_key_iv()
+        cek_ci = cls.encrypt(key, cek, iv, "")
+
+        return (cek, iv, cek_ci)
+
+    @classmethod
+    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+        key = jwk.key.shared_key[:cls._KEY_LEN]
+        cek = cls.decrypt(key, cek_ci)
+        return cek
 
 
 class A128KW(AesKeyEncryptor):
-    pass
+    _KEY_LEN = 16
+    _IV_LEN = 16
 
 
 class A192KW(AesKeyEncryptor):
-    pass
+    _KEY_LEN = 24
+    _IV_LEN = 16
 
 
 class A256KW(AesKeyEncryptor):
-    pass
+    _KEY_LEN = 16
+    _IV_LEN = 16
 
 
 ### Content Encryption
@@ -180,11 +200,38 @@ class A256CBC_HS512(AesContentEncrypor):
 
 if __name__ == '__main__':
 
+    from jose.jwa.encs import KeyEncEnum, EncEnum
+
+    encs = ['A128CBC-HS256', 'A192CBC-HS384', 'A256CBC-HS512']
+    algs = ['A128KW', 'A192KW', 'A256KW']
+
     from jose.utils import base64
-    for enc in [A128CBC_HS256, A192CBC_HS384, A256CBC_HS512]:
+    for e in encs:
+        enc = EncEnum.create(e).encryptor
         cek, iv = enc.create_key_iv()
         assert len(cek) == enc._KEY_LEN
         assert len(iv) == enc._IV_LEN
         print enc.__name__
         print "CEK =", base64.urlsafe_b64encode(cek)
         print "IV=", base64.urlsafe_b64encode(iv)
+
+    import itertools
+    from jose.jwk import Jwk
+    from jose.jwe import Jwe
+    jwk = Jwk.generate(kty="oct")
+    for a, e in list(itertools.product(algs, encs)):
+        jwe = Jwe(
+            alg=KeyEncEnum.create(a),
+            enc=EncEnum.create(e),
+        )
+        cek, iv, cek_ci = jwe.provide_key(jwk)
+
+        print "alg=", a, "enc=", e
+        print "CEK=", base64.base64url_encode(cek)
+        print "IV=", base64.base64url_encode(iv)
+        print "CEK_CI=", base64.base64url_encode(cek_ci)
+        print "Jwe.iv=",  jwe.iv
+        print "Jwe.tag=",  jwe.tag
+
+        cek2 = jwe.agree_key(jwk, cek_ci)
+        print "CEK AGREED=", base64.base64url_encode(cek2)
