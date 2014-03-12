@@ -118,7 +118,8 @@ class TestRsaKey(unittest.TestCase):
         jwk = key.private_jwk
 
         for sig in [SigEnum.PS256, SigEnum.PS384, SigEnum.RS512]:
-            pss = sig.create_signer()
+            pss = sig.signer
+            print type(pss)
             sig = pss.sign(jwk, msg)
             self.assertTrue(pss.verify(jwk, msg, sig))
 

@@ -131,9 +131,9 @@ class TestJws(unittest.TestCase):
 
         jwk = Jwk(**pri_json_dict)
         self.assertTrue(jwk.key.is_private)
-        signer = jws_new.alg.create_signer()
+        signer = jws_new.alg.signer
         from jose.jwa.rsa import RS256
-        self.assertTrue(isinstance(signer, RS256))
+        self.assertEqual(signer, RS256)
         sig_calc = signer.sign(jwk, s_input_str)
 
         sig = [
@@ -289,11 +289,11 @@ class TestJws(unittest.TestCase):
         sig_b64 = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
         jws = Jws.from_base64(jws_b64)
-        sig = jws.alg.create_signer().sign(jwk, sinput)
+        sig = jws.alg.signer.sign(jwk, sinput)
         self.assertEqual(sig_b64, base64.base64url_encode(sig))
 
         self.assertTrue(
-            jws.alg.create_signer().verify(jwk, sinput, sig))
+            jws.alg.signer.verify(jwk, sinput, sig))
 
     def test_jws_appendix_a4(self):
 

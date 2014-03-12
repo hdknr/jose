@@ -1,5 +1,6 @@
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 from aes_gcm import AES_GCM, InvalidTagException
+from jose import BaseContentEncryptor
 
 # Key Encryption
 
@@ -22,7 +23,7 @@ class GCMA256KW(GcmKeyEncryptor):
 
 # Content Encryption
 
-class GcmContentEncryptor(object):
+class GcmContentEncryptor(BaseContentEncryptor):
     _IV_LEN = 12    # octs -> 96bits
     _TAG_LEN = 16   # octs -> 128bits
 
@@ -60,3 +61,15 @@ class GCMA192(GcmContentEncryptor):
 
 class GCMA256(GcmContentEncryptor):
     _KEY_LEN = 32   # octs -> 256bits
+
+
+if __name__ == '__main__':
+
+    from jose.utils import base64
+    for enc in [GCMA128, GCMA192, GCMA256]:
+        cek, iv = enc.create_key_iv()
+        assert len(cek) == enc._KEY_LEN
+        assert len(iv) == enc._IV_LEN
+        print enc.__name__
+        print "CEK =", base64.urlsafe_b64encode(cek)
+        print "IV=", base64.urlsafe_b64encode(iv)

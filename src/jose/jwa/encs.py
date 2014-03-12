@@ -33,7 +33,8 @@ KeyEncDict = dict(
 
 
 class KeyEncEnumBase(AlgorithmBaseEnum):
-    def get_encryptor(self):
+    @classmethod
+    def encryptor(self):
         import rsa
         import ec
         import pbes2
@@ -41,7 +42,10 @@ class KeyEncEnumBase(AlgorithmBaseEnum):
         import aes
         return getattr(
             dict(R=rsa, E=ec, A=aes, P=pbes2, G=gcm)[self.name[0]],
-            self.name)()
+            self.name)
+
+#    def get_encryptor(self):
+#        return self.encryptor()
 
 KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)
 
@@ -58,12 +62,15 @@ EncDict = dict(
 
 
 class EncEnumBase(BaseEnum):
-    def get_encryptor(self):
+    def encryptor(self):
         import gcm
         import aes
         return getattr(
             dict(A=aes, G=gcm)[self.name[0]],
-            self.name)()
+            self.name)
+
+    def get_encryptor(self):
+        return self.encryptor()
 
 
 EncEnum = type('EncEnum', (EncEnumBase,), EncDict)

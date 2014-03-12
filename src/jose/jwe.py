@@ -1,6 +1,7 @@
 from crypto import Crypto
 from jwa.encs import EncEnum, KeyEncEnum
 from jose import BaseEnum, BaseObject
+from jose.utils import merged
 import re
 
 _component = [
@@ -17,13 +18,28 @@ _compact = re.compile('\.'.join(_component))
 class ZipEnum(BaseEnum):
     zip = 'DEF'
 
+BASE_FIELD = dict(
+    enc=None,   #: EncEnum Algorithm
+    zip=None,   #: ZipEnum Compression Algorithm
+)
+
+GCM_FIELD = dict(
+    iv=None,    #: IV for Key Wrap
+    tag=None,   #: Auth Tag for Key Wrap
+)
+
+ECDH_FIELD = dict(
+    epk=None,   #: Ephemeral Public Key
+    apu=None,   #: Agreement ParytUInfo
+    apv=None,   #: Agreement PartyVInf
+)
+
 
 class Jwe(Crypto):
-    _fields = dict(
-        enc=None,     #: EncEnum Algorithm
-        zip=None,     #: ZipEnum Compression Algorithm
-        **(Crypto._fields)
-    )
+    _fields = merged([
+        Crypto._fields, BASE_FIELD,
+        GCM_FIELD, ECDH_FIELD,
+    ])
 
     def __init__(self, **kwargs):
         super(Jwe, self).__init__(**kwargs)
@@ -56,6 +72,23 @@ class Recipient(BaseObject):
         header=None,            # JWE Per-Recipient Unprotected Header
         encrypted_key=None,     # BASE64URL(JWE Encrypted Key)
     )
+
+    def __init__(self, **kwargs):
+        super(Recipient, self).__init__(**kwargs)
+
+        # Jwe
+        if isinstance(self.header, basestring):
+            self.header = Jwe.from_base64(self.header)
+
+        self._cek, self._iv = None, None
+
+    def provide_key(self, jwk):
+        (self._cek, self._iv, self.encrypted_key
+         ) = self.jwe.alg.encryptor.provide(self.header, jwk)
+
+    def agree_key(self, jwk):
+        self._cek = self.header.alg.encryptor.agree(
+            self.header, self.encrypted_key, jwk)
 
 
 class Message(BaseObject):

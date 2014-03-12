@@ -49,3 +49,7 @@ def import_class(class_path):
     mod_name, class_name = class_path.rsplit('.', 1)
     mod = import_module(mod_name)
     return getattr(mod, class_name)
+
+# Merge list of dicts to single dict
+
+merged = lambda dicts: {k: v for dic in dicts for k, v in dic.items()}

@@ -1,4 +1,4 @@
-from jose import BaseKey
+from jose import BaseKey, BaseKeyEncryptor
 from jose.utils import base64
 from jose.jwk import Jwk
 from jose.jwa.keys import CurveEnum, KeyTypeEnum
@@ -114,35 +114,42 @@ class EcdsaSigner(object):
         ])
         return sig
 
-    def digest(self, data):
-        return hashlib.new(self._digester, data).digest()
+    @classmethod
+    def digest(cls, data):
+        return hashlib.new(cls._digester, data).digest()
 
-    def longdigest(self, data):
-        return int(self.hexdigest(data), 16)
+    @classmethod
+    def longdigest(cls, data):
+        return int(cls.hexdigest(data), 16)
 
-    def hexdigest(self, data):
-        return hashlib.new(self._digester, data).hexdigest()
+    @classmethod
+    def hexdigest(cls, data):
+        return hashlib.new(cls._digester, data).hexdigest()
 
-    def sign_to_tuple(self, jwk, data):
+    @classmethod
+    def sign_to_tuple(cls, jwk, data):
         assert jwk.key is not None and jwk.key.is_private
-        dig_long = self.longdigest(data)
+        dig_long = cls.longdigest(data)
         r, s = ecdsa.sign(dig_long,
                           jwk.key.private_key._priv)
         return (r, s)
 
-    def verify_from_tuple(self, jwk, data, sig_in_tuple):
+    @classmethod
+    def verify_from_tuple(cls, jwk, data, sig_in_tuple):
         assert jwk.key is not None
         assert type(sig_in_tuple) == tuple
 
-        dig_long = self.longdigest(data)
+        dig_long = cls.longdigest(data)
         return ecdsa.verify(dig_long, sig_in_tuple,
                             jwk.key.public_key._pub)
 
-    def sign(self, jwk, data):
-        tuple_sig = self.sign_to_tuple(jwk, data)
-        return self.encode_signature(tuple_sig, jwk.key.block_size)
+    @classmethod
+    def sign(cls, jwk, data):
+        tuple_sig = cls.sign_to_tuple(jwk, data)
+        return cls.encode_signature(tuple_sig, jwk.key.block_size)
 
-    def verify(self, jwk, data, signature):
+    @classmethod
+    def verify(cls, jwk, data, signature):
         '''
             :param Jwk jwk: Jwk instannce
             :param str data: source data byte array
@@ -150,8 +157,8 @@ class EcdsaSigner(object):
 
         '''
         assert jwk.key is not None
-        tuple_sig = self.decode_signature(signature)
-        return self.verify_from_tuple(jwk, data, tuple_sig)
+        tuple_sig = cls.decode_signature(signature)
+        return cls.verify_from_tuple(jwk, data, tuple_sig)
 
 
 class ES256(EcdsaSigner):
@@ -166,16 +173,23 @@ class ES512(EcdsaSigner):
     _digester = 'sha512'
 
 
-class EcdhKeyEncryotor(object):
+## Key Encryptor
+
+class EcdhKeyEncryotor(BaseKeyEncryptor):
     pass
 
 
 class ECDH_ES(EcdhKeyEncryotor):
     pass
+#: TODO: CEK is produced by Static Public + Ephemeral Private
+#:       but, CEK is not deliverd ( means CEK == '' in message )
 
 
 class ECDH_ES_A128KW(EcdhKeyEncryotor):
     pass
+
+#: TODO: CEK is given
+#       and wrapped by secret from Static Public + Ephemeral Private
 
 
 class ECDH_ES_A192KW(EcdhKeyEncryotor):

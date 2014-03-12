@@ -120,6 +120,34 @@ class BaseKey(object):
         return False
 
 
+class BaseKeyEncryptor(object):
+    @classmethod
+    def encrypt(self, key, cek, *args, **kwargs):
+        raise NotImplemented()
+
+    @classmethod
+    def decrypt(self, key, cek_ci, *args, **kwargs):
+        raise NotImplemented()
+
+    @classmethod
+    def provide(cls, jwe, *args, **kwargs):
+        raise NotImplemented()
+
+    @classmethod
+    def aggree(cls, jwe, cek_ci, *args, **kwargs):
+        raise NotImplemented()
+
+
+class BaseContentEncryptor(object):
+    @classmethod
+    def create_key_iv(cls):
+        from Crypto import Random
+        return (
+            Random.get_random_bytes(cls._KEY_LEN),
+            Random.get_random_bytes(cls._IV_LEN),
+        )
+
+
 class BaseStore(object):
     def save(self, obj, entity_id="me", id=None, *args, **kwargs):
         pass

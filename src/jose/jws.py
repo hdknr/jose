@@ -34,14 +34,14 @@ class Jws(Crypto):
     def sign(self, signing_input, jwk=None):
         #: TODO: load key from store if signing_jwk  is None
         assert jwk is not None
-        signer = self.alg.create_signer()
+        signer = self.alg.signer
         signature = signer.sign(jwk, signing_input)
         return signature
 
     def verify(self, signing_input, signature, jwk=None):
         #: TODO: load key from store if signing_jwk  is None
         assert jwk is not None
-        signer = self.alg.create_signer()
+        signer = self.alg.signer
         return signer.verify(jwk, signing_input, signature)
 
     def create_message(self, payload):
@@ -146,7 +146,6 @@ class Message(BaseObject):
             protected=protected, header=header)
         signature.sign(self.payload)
         self.append(signature)
-
 
     @classmethod
     def from_token(cls, token):

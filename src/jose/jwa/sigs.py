@@ -24,7 +24,8 @@ SigDict = dict(
 
 
 class SigAlgorithmEnum(AlgorithmBaseEnum):
-    def get_class(self):
+    @property
+    def signer(self):
         import rsa
         import ec
         import hmac
@@ -32,9 +33,5 @@ class SigAlgorithmEnum(AlgorithmBaseEnum):
         mod = dict(H=hmac, R=rsa,
                    P=rsa, E=ec, N=misc)[self.name[0]]
         return getattr(mod, self.name)
-
-    def create_signer(self):
-        return self.get_class()()
-
 
 SigEnum = type('SigEnum', (SigAlgorithmEnum,), SigDict)

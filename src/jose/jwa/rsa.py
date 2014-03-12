@@ -7,7 +7,7 @@ from Crypto.Cipher import (
 )
 #
 from jose.utils import base64
-from jose import BaseKey
+from jose import BaseKey, BaseKeyEncryptor
 from jose.jwk import Jwk
 
 
@@ -116,23 +116,27 @@ class Key(BaseKey):
 
 class RsaSigner(object):
 
-    def digest(self, data):
-        return self._digester.new(data).digest()
+    @classmethod
+    def digest(cls, data):
+        return cls._digester.new(data).digest()
 
-    def hexdigest(self, data):
-        return self._digester(data).hexdigest()
+    @classmethod
+    def hexdigest(cls, data):
+        return cls._digester(data).hexdigest()
 
-    def sign(self, jwk, data):
+    @classmethod
+    def sign(cls, jwk, data):
         assert jwk.key is not None and jwk.key.is_private
-        dig = self._digester.new(data)
-        signer = self._signer.new(jwk.key.private_key)
+        dig = cls._digester.new(data)
+        signer = cls._signer.new(jwk.key.private_key)
         signature = signer.sign(dig)
         return signature
 
-    def verify(self, jwk, data, signature):
+    @classmethod
+    def verify(cls, jwk, data, signature):
         assert jwk.key is not None
-        dig = self._digester.new(data)
-        verifier = self._signer.new(jwk.key.public_key)
+        dig = cls._digester.new(data)
+        verifier = cls._signer.new(jwk.key.public_key)
         return verifier.verify(dig, signature)
 
 
@@ -174,25 +178,24 @@ class PS512(RsaSigner):
 
 ## Key Encryption
 
-class RsaKeyEncryptor(object):
-
-    def encrypt(self, key, cek, *args, **kwargs):
-        return self._cipher.new(key).encrypt(cek)
-
-    def decrypt(self, key, cek_ci, *args, **kwargs):
-        raise NotImplemented()
+class RsaKeyEncryptor(BaseKeyEncryptor):
+    @classmethod
+    def encrypt(cls, key, cek, *args, **kwargs):
+        return cls._cipher.new(key).encrypt(cek)
 
 
 class RSA1_5(RsaKeyEncryptor):
     _cipher = PKCS1_v1_5_ENC
 
-    def decrypt(self, key, cek_ci, *args, **kwargs):
+    @classmethod
+    def decrypt(cls, key, cek_ci, *args, **kwargs):
         sentinel = "TODO:CHECK THIS"
-        return self._cipher.new(key).decrypt(cek_ci, sentinel)
+        return cls._cipher.new(key).decrypt(cek_ci, sentinel)
 
 
 class RSA_OAEP(RsaKeyEncryptor):
     _cipher = PKCS1_OAEP
 
-    def decrypt(self, key, cek_ci, *args, **kwargs):
-        return self._cipher.new(key).decrypt(cek_ci)
+    @classmethod
+    def decrypt(cls, key, cek_ci, *args, **kwargs):
+        return cls._cipher.new(key).decrypt(cek_ci)

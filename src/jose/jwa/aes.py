@@ -1,8 +1,8 @@
 from Crypto.Cipher import AES
 from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 from Crypto.Util.strxor import strxor
-#from Crypto.Util.number import long_to_bytes
 from struct import pack
+from jose import BaseContentEncryptor
 
 slice = lambda s, n: [s[i:i + n] for i in range(0, len(s), n)]
 AES_IV = b'\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6'
@@ -75,8 +75,10 @@ def aes_key_unwrap(K, C):
 
 ### Key Encryption
 
+from jose import BaseKeyEncryptor
 
-class AesKeyEncryptor(object):
+
+class AesKeyEncryptor(BaseKeyEncryptor):
     def encrypt(self, key, cek, *args, **kwargs):
         return aes_key_wrap(key, cek)
 
@@ -104,11 +106,10 @@ pkcs5_unpad = lambda s: s[0:-ord(s[-1])]
 to_al = lambda x:  pack("!Q", 8 * len(x))
 
 
-class AesContentEncrypor(object):
+class AesContentEncrypor(BaseContentEncryptor):
     ''' AES_CBC_HMAC_SHA2 (Jwa 5.2)
 
     '''
-    _IV_LEN = 16
 
     def unpack_key(self, cek):
         return (
@@ -147,6 +148,8 @@ class AesContentEncrypor(object):
 class A128CBC_HS256(AesContentEncrypor):
     ''' AES_128_CBC_HMAC_SHA_256 (Jwa 5.2.3)
     '''
+    _KEY_LEN = 32
+    _IV_LEN = 16
     _ENC_KEY_LEN = 16
     _MAC_KEY_LEN = 16
     _HASH = SHA256
@@ -156,6 +159,8 @@ class A128CBC_HS256(AesContentEncrypor):
 class A192CBC_HS384(AesContentEncrypor):
     ''' AES_192_CBC_HMAC_SHA_384 (Jwa 5.2.4)
     '''
+    _KEY_LEN = 48
+    _IV_LEN = 16
     _ENC_KEY_LEN = 24
     _MAC_KEY_LEN = 24
     _TAG_LEN = 24       # Authentication Tag Length
@@ -165,7 +170,21 @@ class A192CBC_HS384(AesContentEncrypor):
 class A256CBC_HS512(AesContentEncrypor):
     ''' AES_256_CBC_HMAC_SHA_512 (Jwa 5.2.5)
     '''
+    _KEY_LEN = 64
+    _IV_LEN = 16
     _ENC_KEY_LEN = 32
     _MAC_KEY_LEN = 32
     _HASH = SHA512
     _TAG_LEN = 32
+
+
+if __name__ == '__main__':
+
+    from jose.utils import base64
+    for enc in [A128CBC_HS256, A192CBC_HS384, A256CBC_HS512]:
+        cek, iv = enc.create_key_iv()
+        assert len(cek) == enc._KEY_LEN
+        assert len(iv) == enc._IV_LEN
+        print enc.__name__
+        print "CEK =", base64.urlsafe_b64encode(cek)
+        print "IV=", base64.urlsafe_b64encode(iv)

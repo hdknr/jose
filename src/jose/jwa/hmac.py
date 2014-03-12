@@ -2,19 +2,22 @@ from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 
 
 class HmacSigner(object):
-    def digest(self, jwk, data):
+    @classmethod
+    def digest(cls, jwk, data):
         mac = HMAC.new(jwk.key.shared_key,
-                       digestmod=self._digester)
+                       digestmod=cls._digester)
         mac.update(data)
         return mac.digest()
 
-    def sign(self, jwk, data):
+    @classmethod
+    def sign(cls, jwk, data):
         assert jwk.key is not None and jwk.key.shared_key
-        return self.digest(jwk, data)
+        return cls.digest(jwk, data)
 
-    def verify(self, jwk, data, signature):
+    @classmethod
+    def verify(cls, jwk, data, signature):
         assert jwk.key is not None and jwk.key.shared_key
-        return self.digest(jwk, data) == signature
+        return cls.digest(jwk, data) == signature
 
 
 class HS256(HmacSigner):
