@@ -121,7 +121,7 @@ class TestAes(unittest.TestCase):
             232, 90, 29, 147, 110, 169,
             146, 114, 165, 204, 71, 136, 41, 252]
         cek_enc = ''.join(chr(i) for i in cek_enc_oct)
-        key_enc = jwe.alg.get_encryptor()
+        key_enc = jwe.alg.encryptor
         cek_restore = key_enc.decrypt(pri, cek_enc)
         self.assertEqual(cek, cek_restore)
         cek_enc_2 = key_enc.encrypt(pub, cek)
@@ -163,7 +163,7 @@ class TestAes(unittest.TestCase):
         tag = ''.join(chr(i) for i in tag_oct)
 
         # decrypt
-        cenc = jwe.enc.get_encryptor()
+        cenc = jwe.enc.encryptor
         p_new, is_valid = cenc.decrypt(cek, ciphert, iv, aad, tag)
         self.assertTrue(is_valid)
         self.assertEqual(p_new, plaint)
@@ -212,7 +212,7 @@ class TestAes(unittest.TestCase):
         }
         kek = base64.base64url_decode(jwk_dict['k'])
 
-        uk = jwe.alg.get_encryptor().encrypt(kek, cek)
+        uk = jwe.alg.encryptor.encrypt(kek, cek)
         self.assertEqual(cek_ci, uk)
 
         # Jwe Appendix A.3.4
@@ -247,7 +247,7 @@ class TestAes(unittest.TestCase):
         tag = ''.join(chr(i) for i in tag_oct)
         ciphert = ''.join(chr(i) for i in ciphert_oct)
 
-        pt, v = jwe.enc.get_encryptor().decrypt(cek, ciphert, iv, aad, tag)
+        pt, v = jwe.enc.encryptor.decrypt(cek, ciphert, iv, aad, tag)
         self.assertTrue(v)
         self.assertTrue(pt, plaint)
 

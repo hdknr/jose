@@ -112,9 +112,9 @@ class TestGcm(unittest.TestCase):
         self.assertEqual(cek_enc_bytes, base64.base64url_decode(cek_enc_b64))
 
         self.assertEqual(len(cek) * 8, 256)
-        key_enc = jwe.alg.get_encryptor()
+        key_enc = jwe.alg.encryptor
         from jose.jwa.rsa import RSA_OAEP
-        self.assertTrue(isinstance(key_enc, RSA_OAEP))
+        self.assertEqual(key_enc, RSA_OAEP)
         pub = jwk.key.public_key
         pri = jwk.key.private_key
         self.assertEqual(base64.long_to_b64(pub.n), jwk_dict['n'])
@@ -145,9 +145,9 @@ class TestGcm(unittest.TestCase):
         aad = ''.join(chr(i) for i in aad_oct)
 
         # Appendix A.1.6
-        cenc = jwe.enc.get_encryptor()
+        cenc = jwe.enc.encryptor
         from jose.jwa.gcm import GCMA256
-        self.assertTrue(isinstance(cenc, GCMA256))
+        self.assertEqual(cenc, GCMA256)
 
         ciphert_oct = [
             229, 236, 166, 241, 53, 191, 115,
