@@ -118,7 +118,7 @@ class A192KW(AesKeyEncryptor):
 
 
 class A256KW(AesKeyEncryptor):
-    _KEY_LEN = 16
+    _KEY_LEN = 32
     _IV_LEN = 16
 
 

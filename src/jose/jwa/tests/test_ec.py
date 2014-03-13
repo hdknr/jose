@@ -245,6 +245,8 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
                  140, 254, 144, 196]
 
         self.assertEqual([ord(i) for i in Zu], Z_jwa)
+        self.assertEqual(base64.base64url_encode(Zu),
+                         'nlbZHYFxNdNyg0KDv4QmnPsxbqPagGpI9tqneYz-kMQ')
 
         from jose.jwe import Jwe
         from jose.jwa.ec import ECDH_ES

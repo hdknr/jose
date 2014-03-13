@@ -5,7 +5,7 @@ if __name__ == '__main__':
     import unittest
     import importlib
 
-    for name in ['jwa', 'rsa', 'ec', ]:
+    for name in ['jwa', 'rsa', 'ec', 'aes', 'gcm', 'hmac', 'pbes2', ]:
         mod = importlib.import_module("test_{:s}".format(name))
         for attr in dir(mod):
             if not attr.startswith('Test'):
