@@ -26,6 +26,12 @@ PKCS#5 v2.0 PBKDF2 Module
 
 .. code-block:: bash
 
+    $ pip install pbkdf2
+
+otherwise, 
+
+.. code-block:: bash
+
     $ pip install -e git+https://github.com/dlitz/python-pbkdf2.git#egg=pbkdf2
 
 128 bit AES GCM

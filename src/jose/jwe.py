@@ -34,11 +34,16 @@ ECDH_FIELD = dict(
     apv=None,   #: Agreement PartyVInf
 )
 
+PBES_FIELD = dict(
+    p2s=None,    #: Salt for PBKDF2
+    p2c=None,    #: Loop counts for PBKDF2
+)
+
 
 class Jwe(Crypto):
     _fields = merged([
         Crypto._fields, BASE_FIELD,
-        GCM_FIELD, ECDH_FIELD,
+        GCM_FIELD, ECDH_FIELD, PBES_FIELD
     ])
 
     def __init__(self, **kwargs):

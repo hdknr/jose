@@ -6,18 +6,96 @@
 # PBES2
 # http://tools.ietf.org/html/rfc2898#section-6.2
 
+from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
+from Crypto import Random
+from pbkdf2 import PBKDF2
+from jose.jwa.aes import A128KW, A192KW, A256KW
+from jose.utils import base64
+
 
 class Pbes2KeyEncryptor(object):
-    pass
+    @classmethod
+    def provide(cls, jwk, jwe, *args, **kwargs):
+        cek, iv = jwe.enc.encryptor.create_key_iv()
+        if jwe.p2c:
+            p2s = base64.base64url_decode(jwe.p2s)
+        else:
+            p2s = Random.get_random_bytes(32)
+            jwe.p2s = base64.base64url_encode(p2s)
+
+        if jwe.p2c:
+            p2c = int(jwe.p2c)
+        else:
+            p2c = 1024
+            jwe.p2c = p2c
+
+        kek = PBKDF2(jwk.key.shared_key, jwe.p2s, int(jwe.p2c),
+                     digestmodule=cls._digester,
+                     macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
+        cek_ci = cls._wrapper.encrypt(kek, cek)
+        return cek, iv, cek_ci
+
+    @classmethod
+    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+        kek = PBKDF2(jwk.key.shared_key, jwe.p2s, int(jwe.p2c),
+                     digestmodule=cls._digester,
+                     macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
+        return cls._wrapper.decrypt(kek, cek_ci)
 
 
 class PBES2_HS256_A128KW(Pbes2KeyEncryptor):
-    pass
+    _digester = SHA256
+    _mac = HMAC
+    _wrapper = A128KW
 
 
 class PBES2_HS384_A192KW(Pbes2KeyEncryptor):
-    pass
+    _digester = SHA384
+    _mac = HMAC
+    _wrapper = A192KW
 
 
 class PBES2_HS512_A256KW(Pbes2KeyEncryptor):
-    pass
+    _digester = SHA512
+    _mac = HMAC
+    _wrapper = A256KW
+
+
+if __name__ == '__main__':
+
+    from jose.jwa.encs import KeyEncEnum, EncEnum
+
+    algs = ['PBES2-HS256+A128KW', 'PBES2-HS384+A192KW', 'PBES2-HS512+A256KW']
+    encs = ['A128GCM', 'A192GCM', 'A256GCM']
+
+    for e in encs:
+        enc = EncEnum.create(e).encryptor
+        cek, iv = enc.create_key_iv()
+        assert len(cek) == enc._KEY_LEN
+        assert len(iv) == enc._IV_LEN
+        print enc.__name__
+        print "CEK =", base64.urlsafe_b64encode(cek)
+        print "IV=", base64.urlsafe_b64encode(iv)
+
+    import itertools
+    from jose.jwk import Jwk
+    from jose.jwe import Jwe
+    jwk = Jwk.generate(kty="oct")
+    for a, e in list(itertools.product(algs, encs)):
+        jwe = Jwe(
+            alg=KeyEncEnum.create(a),
+            enc=EncEnum.create(e),
+        )
+        cek, iv, cek_ci = jwe.provide_key(jwk)
+
+        print "TESTING ---- :alg=", a, "enc=", e
+        print "CEK=", base64.base64url_encode(cek)
+        print "IV=", base64.base64url_encode(iv)
+        print "CEK_CI=", base64.base64url_encode(cek_ci)
+        print "Jwe.p2s=",  jwe.p2s
+        print "Jwe.p2c=",  jwe.p2c
+
+        cek2 = jwe.agree_key(jwk, cek_ci)
+
+        print "CEK AGREED=", base64.base64url_encode(cek2)
+        assert cek == cek2
