@@ -14,12 +14,12 @@ class BaseKeyTypeEnum(BaseEnum):
     def get_key_class(self, *args, **kwargs):
         import rsa
         import ec
-        import shared
+        import hmac
 
         return dict(
             RSA=rsa.Key,
             EC=ec.Key,
-            OCT=shared.Key,
+            OCT=hmac.Key,
         )[self.name]
 
     def create_key(self, *args, **kwargs):
