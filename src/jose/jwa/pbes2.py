@@ -15,31 +15,27 @@ from jose.utils import base64
 
 class Pbes2KeyEncryptor(object):
     @classmethod
+    def derive(cls, jwk, jwe, *args, **kwargs):
+        salt = base64.base64url_decode(jwe.p2s)
+        return PBKDF2(jwk.key.shared_key, salt, int(jwe.p2c),
+                      digestmodule=cls._digester,
+                      macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
+
+    @classmethod
     def provide(cls, jwk, jwe, *args, **kwargs):
         cek, iv = jwe.enc.encryptor.create_key_iv()
-        if jwe.p2c:
-            p2s = base64.base64url_decode(jwe.p2s)
-        else:
-            p2s = Random.get_random_bytes(32)
-            jwe.p2s = base64.base64url_encode(p2s)
+        jwe.p2s = jwe.p2s or base64.base64url_encode(
+            Random.get_random_bytes(cls._wrapper._KEY_LEN))
+        jwe.p2c = jwe.p2c or 1024
 
-        if jwe.p2c:
-            p2c = int(jwe.p2c)
-        else:
-            p2c = 1024
-            jwe.p2c = p2c
-
-        kek = PBKDF2(jwk.key.shared_key, jwe.p2s, int(jwe.p2c),
-                     digestmodule=cls._digester,
-                     macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
+        kek = cls.derive(jwk, jwe, *args, **kwargs)
         cek_ci = cls._wrapper.encrypt(kek, cek)
-        return cek, iv, cek_ci
+
+        return cek, iv, cek_ci, kek
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
-        kek = PBKDF2(jwk.key.shared_key, jwe.p2s, int(jwe.p2c),
-                     digestmodule=cls._digester,
-                     macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
+        kek = cls.derive(jwk, jwe, *args, **kwargs)
         return cls._wrapper.decrypt(kek, cek_ci)
 
 
@@ -86,7 +82,7 @@ if __name__ == '__main__':
             alg=KeyEncEnum.create(a),
             enc=EncEnum.create(e),
         )
-        cek, iv, cek_ci = jwe.provide_key(jwk)
+        cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
         print "TESTING ---- :alg=", a, "enc=", e
         print "CEK=", base64.base64url_encode(cek)
@@ -94,6 +90,8 @@ if __name__ == '__main__':
         print "CEK_CI=", base64.base64url_encode(cek_ci)
         print "Jwe.p2s=",  jwe.p2s
         print "Jwe.p2c=",  jwe.p2c
+        print "KEY=", jwk.k
+        print "KEK=", base64.base64url_encode(kek)
 
         cek2 = jwe.agree_key(jwk, cek_ci)
 
