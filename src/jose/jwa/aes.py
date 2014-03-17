@@ -84,14 +84,26 @@ class AesKeyEncryptor(BaseKeyEncryptor):
         return cls._KEY_LEN
 
     @classmethod
+    def iv_length(cls):
+        return cls._IV_LEN
+
+    @classmethod
     def encrypt(cls, jwk, cek, *args, **kwargs):
         key = jwk.key.shared_key[:cls._KEY_LEN]
-        return aes_key_wrap(key, cek)
+        return cls.kek_encrypt(key, cek_ci)
 
     @classmethod
     def decrypt(cls, jwk, cek_ci, *args, **kwargs):
         key = jwk.key.shared_key[:cls._KEY_LEN]
-        return aes_key_unwrap(key, cek_ci)
+        return cls.kek_decrypt(key, cek_ci)
+
+    @classmethod
+    def kek_encrypt(cls, kek, cek, *args, **kwargs):
+        return aes_key_wrap(kek, cek)
+
+    @classmethod
+    def kek_decrypt(cls, kek, cek_ci, *args, **kwargs):
+        return aes_key_unwrap(kek, cek_ci)
 
     @classmethod
     def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):

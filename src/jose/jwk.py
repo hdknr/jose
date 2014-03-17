@@ -1,5 +1,5 @@
 from jose import BaseEnum, BaseObject
-from jwa import keys        # , Algorithm
+from jose.jwa import keys        # , Algorithm
 #
 
 

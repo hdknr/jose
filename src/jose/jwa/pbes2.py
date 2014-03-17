@@ -9,17 +9,34 @@
 from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 from Crypto import Random
 from pbkdf2 import PBKDF2
+from jose import BaseKeyEncryptor
 from jose.jwa.aes import A128KW, A192KW, A256KW
 from jose.utils import base64
 
 
-class Pbes2KeyEncryptor(object):
+class Pbes2KeyEncryptor(BaseKeyEncryptor):
     @classmethod
-    def derive(cls, jwk, jwe, *args, **kwargs):
-        salt = base64.base64url_decode(jwe.p2s)
-        return PBKDF2(jwk.key.shared_key, salt, int(jwe.p2c),
+    def key_length(cls):
+        return cls._wrapper._KEY_LEN
+
+    @classmethod
+    def iv_length(cls):
+        return cls._wrapper._IV_LEN
+
+    @classmethod
+    def derive(cls, jwk, salt, count, *args, **kwargs):
+        salt = base64.base64url_decode(salt)
+        return PBKDF2(jwk.key.shared_key, salt, count,
                       digestmodule=cls._digester,
                       macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
+
+    @classmethod
+    def encrypt(cls, kek, cek):
+        return cls._wrapper.kek_encrypt(kek, cek)
+
+    @classmethod
+    def decrypt(cls, kek, cek_ci):
+        return cls._wrapper.kek_decrypt(kek, cek_ci)
 
     @classmethod
     def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
@@ -33,15 +50,15 @@ class Pbes2KeyEncryptor(object):
             Random.get_random_bytes(cls._wrapper._KEY_LEN))
         jwe.p2c = jwe.p2c or 1024
 
-        kek = cls.derive(jwk, jwe, *args, **kwargs)
-        cek_ci = cls._wrapper.encrypt(kek, cek)
+        kek = cls.derive(jwk, jwe.p2s, jwe.p2c, *args, **kwargs)
+        cek_ci = cls.encrypt(kek, cek)
 
         return cek, iv, cek_ci, kek
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
         kek = cls.derive(jwk, jwe, *args, **kwargs)
-        return cls._wrapper.decrypt(kek, cek_ci)
+        return cls.decrypt(kek, cek_ci)
 
 
 class PBES2_HS256_A128KW(Pbes2KeyEncryptor):

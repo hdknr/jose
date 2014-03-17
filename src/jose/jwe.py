@@ -1,5 +1,5 @@
 from crypto import Crypto
-from jwa.encs import EncEnum, KeyEncEnum
+from jose.jwa.encs import EncEnum, KeyEncEnum
 from jose import BaseEnum, BaseObject
 from jose.utils import merged
 import re

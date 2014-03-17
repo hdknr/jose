@@ -128,14 +128,6 @@ class BaseKey(object):
 
 
 class BaseKeyEncryptor(object):
-#    @classmethod
-#    def encrypt(self, key, cek, *args, **kwargs):
-#        raise NotImplemented()
-#
-#    @classmethod
-#    def decrypt(self, key, cek_ci, *args, **kwargs):
-#        raise NotImplemented()
-
     @classmethod
     def provide(cls, jwk, jwe, *args, **kwargs):
         raise NotImplemented()
