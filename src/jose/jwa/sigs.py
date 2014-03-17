@@ -1,4 +1,5 @@
 from jose import AlgorithmBaseEnum
+from jose.jwa import keys
 
 __all__ = ['SigDict', 'SigEnum', ]
 #
@@ -33,5 +34,14 @@ class SigAlgorithmEnum(AlgorithmBaseEnum):
         mod = dict(H=hmac, R=rsa,
                    P=rsa, E=ec, N=misc)[self.name[0]]
         return getattr(mod, self.name)
+
+    @property
+    def key_type(self):
+        return dict(
+            H=keys.KeyTypeEnum.OCT,
+            R=keys.KeyTypeEnum.RSA,
+            P=keys.KeyTypeEnum.RSA,
+            E=keys.KeyTypeEnum.EC,)[self.name[0]]
+
 
 SigEnum = type('SigEnum', (SigAlgorithmEnum,), SigDict)

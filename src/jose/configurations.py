@@ -8,4 +8,4 @@ class Configuration(object):
             os.environ.get(
                 'JOSE_STORE_CLASS',
                 'jose.store.FileStore')
-        )
+        )()

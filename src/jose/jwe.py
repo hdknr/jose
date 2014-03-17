@@ -3,12 +3,14 @@ from jwa.encs import EncEnum, KeyEncEnum
 from jose import BaseEnum, BaseObject
 from jose.utils import merged
 import re
+import traceback
 
+# http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption-23#section-7.1
 _component = [
-    r'^(?P<head>[^\.]+)',
-    r'(?P<key>[^\.]+)',
+    r'^(?P<header>[^\.]+)',
+    r'(?P<encrypted_key>[^\.]*)',   #: blank for shared key.
     r'(?P<iv>[^\.]+)',
-    r'(?P<ciphered>[^\.]+)',
+    r'(?P<ciphertext>[^\.]+)',
     r'(?P<tag>[^\.]+)$',
 ]
 
@@ -93,13 +95,20 @@ class Recipient(BaseObject):
 
         self._cek, self._iv = None, None
 
-    def provide_key(self, jwk):
+    def provide_key(self, jwk, cek=None, iv=None):
+        assert jwk.is_public, "providing jwk must be public."
         (self._cek, self._iv, self.encrypted_key
-         ) = self.jwe.alg.encryptor.provide(self.header, jwk)
+         ) = self.jwe.alg.encryptor.provide(self.header, jwk, cek, iv)
+        return self._cek, self._iv
 
     def agree_key(self, jwk):
+        assert jwk.is_private, "Agreement jwk must be private."
         self._cek = self.header.alg.encryptor.agree(
             self.header, self.encrypted_key, jwk)
+        return self._cek
+
+    def load_key(self, receiver):
+        return self.header.load_key(receiver)
 
 
 class Message(BaseObject):
@@ -108,7 +117,94 @@ class Message(BaseObject):
         unprotected=None,   # JWE Shared Unprotected Header
         iv='',              # BASE64URL(JWE Initialization Vector)
         aad='',             # BASE64URL(JWE AAD))
+                            # (only used for Json Serialization)
         ciphertext='',      # BASE64(JWE Ciphertext)
         tag='',             # BASE64URL(JWE Authentication Tag)
         recipients=[],      # array of Recipient
     )
+
+    def __init__(self, *args, **kwargs):
+        self._plaintext = None
+        self._cek = None
+        super(Message, self).__init__(*args, **kwargs)
+        if isinstance(self.recipients, list):
+            self.recipients = map(lambda i: Recipient(**i),
+                                  self.recipients)
+
+    def create_ciphertext(self, recipient, plaint, receiver):
+        ''' before call, recipient has to be provided _iv and _cek
+        '''
+        jwk = recipient.load_key(receiver).public_jwk
+        (self._cek, self.iv) = recipient.provide_key(jwk)
+
+        self.recipients = []      # reset recipient
+
+        (self.ciphertext,
+         self.tag) = self.protected.enc.encryptor.encrypt(
+            recipient._cek, plaint, self.iv, self.aad)
+
+        self.recipients.append(recipient)
+
+    def add_recipient(self, recipient, receiver):
+        ''' before call, recipient has to be provided with
+            messsage's CEK and IV
+        '''
+        # use existent cek and iv
+        recipient.provide(receiver, self.cek, self.iv)
+        self.recipients.append(recipient)
+
+    @property
+    def plaintext(self):
+        if self._plaintext:
+            return self._plaintext
+
+        for recipient in self.recipients:
+            jwk = recipient.load_key(self.receiver).private_jwk
+            recipient.agree_key(jwk)
+            if recipient._cek:
+                # only recipient has receiver's private key can agree
+                self._plaint = self.protected.enc.encryptor.decrypt(
+                    recipient._cek, self.ciphertext,
+                    self.iv, self.aad, self.tag)
+
+        return self._plaint
+
+    @property
+    def cek(self):
+        return self._cek
+
+    @cek.setter
+    def cek(self, value):
+        self._cek = value
+
+    @classmethod
+    def from_token(cls, token, sender, receiver):
+        '''
+            :param token: Serialized Jws (JSON or Compact)
+            :param str sender: Message sender identifier
+        '''
+
+        try:
+            message = cls.from_json(token)
+            message.sender = sender
+            message.receiver = receiver
+            return message
+
+        except ValueError:
+            #: fall to  compact serialization
+            pass
+        except Exception, e:
+            print ">>>>>>", type(e)
+            print traceback.format_exc()
+
+        try:
+            m = _compact.search(token).groupdict()
+            message = cls(recepients=[Recipient(**m)], **m)
+            message.sender = sender
+            message.receiver = receiver
+            return message
+        except Exception, e:
+            print ">>>>>>", type(e)
+            print traceback.format_exc()
+
+        return None

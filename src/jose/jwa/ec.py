@@ -262,11 +262,19 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
             return (dkey, None)
 
     @classmethod
-    def provide(cls, jwk, jwe, *args, **kwargs):
+    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+        if cls._KEY_WARP is None and cek is not None:
+            #: CEK must be None for ECDH_ES
+            return None
+
         jwe.apu = jwe.apu or "TODO:RANDOM APU"
         jwe.apv = jwe.apv or "TODO:RANDOM APv"
 
-        cek, iv = jwe.enc.encryptor.create_key_iv()
+        if cek:
+            pass
+        else:
+            cek, iv = jwe.enc.encryptor.create_key_iv()
+
         epk = Jwk.generate(kty=KeyTypeEnum.EC)
         agr = epk.key.agreement_to(jwk.key)
         key, cek_ci = cls.create_key(jwe, agr, cek)
@@ -276,9 +284,13 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+        if cls._KEY_WARP is None and not cek_ci:
+            # ECDH_ES: cek must be None
+            return None
+
         agr = jwk.key.agreement_to(jwe.epk.key)
         key, _dmy = cls.create_key(jwe, agr, None)
-        if cek_ci:
+        if cls._KEY_WARP:
             return cls._KEY_WRAP.decrypt(key, cek_ci)
         else:
             return key
@@ -287,6 +299,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
 class ECDH_ES(EcdhKeyEncryotor):
     #: TODO: CEK is produced by Static Public + Ephemeral Private
     #:       but, CEK is not deliverd ( means CEK == '' in message )
+    _KEY_WARP = None
     pass
 
 

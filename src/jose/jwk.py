@@ -1,7 +1,6 @@
 from jose import BaseEnum, BaseObject
 from jwa import keys        # , Algorithm
 #
-import requests
 
 
 class UseEnum(BaseEnum):
@@ -59,19 +58,19 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
             self._key = self.kty.create_key(jwk=self)
         return self._key
 
-    @classmethod
-    def from_json(cls, json_str, base=None):
-        obj = BaseObject.from_json(json_str, cls)
-        return obj
+#    @classmethod
+#    def from_json(cls, json_str, base=None):
+#        obj = BaseObject.from_json(json_str, cls)
+#        return obj
 
-    @classmethod
-    def from_uri(cls, uri):
-        json_str = requests.get(uri).content
-        return cls.from_json(json_str)
+#    @classmethod
+#    def from_uri(cls, uri):
+#        json_str = requests.get(uri).content
+#        return cls.from_json(json_str)
 
-    @classmethod
-    def from_uri_cache(cls, uri):
-        return cls.load(uri) or cls.from_uri(uri)
+#    @classmethod
+#    def from_uri_cache(cls, uri):
+#        return cls.load(uri) or cls.from_uri(uri)
 
     @property
     def public_jwk(self):
@@ -102,3 +101,24 @@ class JwkSet(BaseObject):
     _fields = dict(
         keys=[]     # JwkSet list
     )
+
+    def __init__(self, *args, **kwargs):
+        super(JwkSet, self).__init__(*args, **kwargs)
+        if isinstance(self.keys, list) and self.keys:
+            new_keys = []
+            for key in self.keys:
+                if isinstance(key, Jwk):
+                    new_keys.append(key)
+                if isinstance(key, dict):
+                    new_keys.append(Jwk(**key))
+            self.keys = new_keys
+
+    def get(self, kty, kid=None):
+        if not isinstance(self.keys, list) or len(self.keys) == 0:
+            return None
+
+        for key in self.keys:
+            if key.kty == kty:
+                if not kid or key.kid == kid:
+                    return key
+        return None

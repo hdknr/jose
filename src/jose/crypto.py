@@ -1,4 +1,5 @@
 from jose import BaseObject
+from jose.jwk import JwkSet
 
 
 class Crypto(BaseObject):
@@ -22,12 +23,61 @@ class Crypto(BaseObject):
     def to_token(self):
         raise NotImplemented
 
+    def load_key(self, owner):
+        '''
+            :param str owner: Owner identifier
+        '''
+        # If pair wise keyset is required,
+        # `jku` MUST include both parties identity.
+        # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
+        keyset = JwkSet.load(owner, self.jku)
+        return keyset.get(self.kty, self.kid)
 
-def from_token(token):
+
+class CryptoMessage(BaseObject):
+    def __init__(self, _sender=None, _receiver=None, *args, **kwargs):
+        super(CryptoMessage, self).__init__(*args, **kwargs)
+        self._sender = _sender
+        self._receiver = _receiver
+
+    @property
+    def sender(self):
+        return self._sender
+
+    @sender.setter
+    def sender(self, value):
+        self._sender = value
+
+    @property
+    def receiver(self):
+        return self._receiver
+
+    @receiver.setter
+    def receiver(self, value):
+        self._receiver = value
+
+    def seriaize_compact(self):
+        raise NotImplemented()
+
+    def seriaize_json(self, **kwargs):
+        ''' kwargs can contain named args to json.dumps
+        '''
+        raise NotImplemented()
+
+
+def parse_message(token_or_json, sender, receiver):
     from jws import Jws
     from jwe import Jwe
 
-    crypto = Jws.from_token(token) or \
-        Jwe.from_token(token)
-
+    crypto = Jws.from_token(token_or_json, sender, receiver) or \
+        Jwe.from_token(token_or_json, sender, receiver)
     return crypto
+
+#def from_token(token, sender):
+#    from jws import Jws
+#    from jwe import Jwe
+#
+#    crypto = Jws.from_token(token) or \
+#        Jwe.from_token(token)
+#
+#    return crypto

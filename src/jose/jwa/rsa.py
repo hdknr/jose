@@ -137,7 +137,7 @@ class RsaSigner(object):
         assert jwk.key is not None
         dig = cls._digester.new(data)
         verifier = cls._signer.new(jwk.key.public_key)
-        return verifier.verify(dig, signature)
+        return 1 == verifier.verify(dig, signature)
 
 
 class RS256(RsaSigner):
@@ -180,27 +180,31 @@ class PS512(RsaSigner):
 
 class RsaKeyEncryptor(BaseKeyEncryptor):
     @classmethod
-    def encrypt(cls, key, cek, *args, **kwargs):
-        return cls._cipher.new(key).encrypt(cek)
+    def encrypt(cls, jwk, cek, *args, **kwargs):
+        return cls._cipher.new(jwk.key.public_key).encrypt(cek)
 
     @classmethod
-    def provide(cls, jwk, jwe, *args, **kwargs):
-        cek, iv = jwe.enc.encryptor.create_key_iv()
-        cek_ci = cls.encrypt(jwk.key.public_key, cek)
+    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+        if cek:
+            #: TODO:chekc iv is valid
+            pass
+        else:
+            cek, iv = jwe.enc.encryptor.create_key_iv()
+        cek_ci = cls.encrypt(jwk, cek)
         return cek, iv, cek_ci
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
-        return cls.decrypt(jwk.key.private_key, cek_ci)
+        return cls.decrypt(jwk, cek_ci)
 
 
 class RSA1_5(RsaKeyEncryptor):
     _cipher = PKCS1_v1_5_ENC
 
     @classmethod
-    def decrypt(cls, key, cek_ci, *args, **kwargs):
+    def decrypt(cls, jwk, cek_ci, *args, **kwargs):
         sentinel = "TODO:CHECK THIS"
-        return cls._cipher.new(key).decrypt(cek_ci, sentinel)
+        return cls._cipher.new(jwk.key.private_key).decrypt(cek_ci, sentinel)
 
 
 class RSA_OAEP(RsaKeyEncryptor):

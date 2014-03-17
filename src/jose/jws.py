@@ -1,4 +1,4 @@
-from crypto import Crypto
+from crypto import Crypto, CryptoMessage
 from jose import BaseObject
 from jose.utils import base64
 from jose.jwa.sigs import SigEnum
@@ -92,28 +92,30 @@ class Signature(BaseObject):
         #: merge protected and header(public)
         return self._protected.merge(self.header)
 
-    def to_compact_token(self, b64_payload, signing_jwk=None):
-        self.sign(b64_payload, signing_jwk)
+    def to_compact_token(self, b64_payload, jwk):
+        self.sign(b64_payload, jwk)
         return ".".join([self.protected, b64_payload, self.signature])
 
-    def verify(self, b64_payload, verifying_jwk=None):
+    def signing_input(self, b64_payload):
         b64_header = self.protected         # TODO: Check spec
-        s_input = ".".join([b64_header, b64_payload])
-        jws = self.to_jws()
-        return jws.verify(
-            s_input,
-            base64.base64url_decode(self.signature),
-            verifying_jwk)
+        return ".".join([b64_header, b64_payload])
 
-    def sign(self, b64_payload, signing_jwk=None):
+    def verify(self, b64_payload, jwk=None):
+        s_input = self.signing_input(b64_payload)
+        jws = self.to_jws()
+        return jws.verify(s_input,
+                          base64.base64url_decode(self.signature),
+                          jwk)
+
+    def sign(self, b64_payload, jwk):
         #: TODO: load key from store if signing_jwk  is None
         #: only self._protected is used for Jwk parameter
         self.render_protected()
+        s_input = self.signing_input(b64_payload)
         jws = self.to_jws()
-        b64_header = self.protected
-        s_input = ".".join([b64_header, b64_payload])
+
         self.signature = base64.base64url_encode(
-            jws.sign(s_input, signing_jwk))
+            jws.sign(s_input, jwk))
 
     def render_protected(self):
         ''' convert "_protected" Jws object to
@@ -123,8 +125,12 @@ class Signature(BaseObject):
             self.protected = base64.base64url_encode(
                 self._protected.to_json())
 
+    def load_load(self, owner):
+        jws = self.to_jws()
+        return jws.load_key(owner)
 
-class Message(BaseObject):
+
+class Message(CryptoMessage):
     _fields = dict(
         payload='',     # Base64url(Jws Payload
         signatures=[],  # array of Signature
@@ -148,13 +154,17 @@ class Message(BaseObject):
         self.append(signature)
 
     @classmethod
-    def from_token(cls, token):
+    def from_token(cls, token, sender=None, receiver=None):
         '''
             :param token: Serialized Jws (JSON or Compact)
+            :param str sender: Message sender identifier
         '''
 
         try:
-            return cls.from_json(token)
+            message = cls.from_json(token)
+            message.sender = sender
+            message.receiver = receiver
+            return message
 
         except ValueError:
             #: fall to  compact serialization
@@ -165,7 +175,8 @@ class Message(BaseObject):
 
         try:
             m = _compact.search(token).groupdict()
-            obj = cls(signatures=[Signature(**m)], **m)
+            obj = cls(_sender=sender, _receiver=receiver,
+                      signatures=[Signature(**m)], **m)
             return obj
         except Exception, e:
             print ">>>>>>", type(e)
@@ -173,7 +184,7 @@ class Message(BaseObject):
 
         return None
 
-    def verify(self, verify_key=None):
+    def verify(self):
         '''
         .. warning:
             Because every signature MAY be signed
@@ -181,21 +192,30 @@ class Message(BaseObject):
             pubulic key MUST be located by Jws header
             information.
         '''
-        return all(map(lambda sig: sig.verify(self.payload, verify_key),
-                       self.signatures))
 
-    def serialize_json(self, signing_jwk=None, **kwargs):
+        ret = True
+        for sig in self.signatures:
+            jwk = sig.load_key(self.sender).public_jwk
+            ret = ret and sig.verify(self.payload, jwk)
+        return ret
+
+    def load_key(self, index):
+        return self.signatures[index].load_key(
+            self.sender)
+
+    def serialize_json(self, jwk=None, **kwargs):
         ''' TODO: key shoudld be diffrent each other for
             each signature.
         '''
         for sig in self.signatures:
-            sig.sign(self.payload, signing_jwk)
+            sigjwk = jwk or sig.load_key(self.sender).private_jwk
+            sig.sign(self.payload, sigjwk)
 
         return self.to_json(**kwargs)
 
-    def serialize_compact(self, signing_jwk=None):
+    def serialize_compact(self, jwk=None):
         ''' use the very first of Signature object
             in "signatures list.
         '''
-        return self.signatures[0].to_compact_token(
-            self.payload, signing_jwk)
+        jwk = jwk or self.load_key(0).private_jwk
+        return self.signatures[0].to_compact_token(self.payload, jwk)

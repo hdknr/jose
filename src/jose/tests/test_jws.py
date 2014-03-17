@@ -49,7 +49,7 @@ class TestJws(unittest.TestCase):
             'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
         ])
 
-        msg = Message.from_token(data)
+        msg = Message.from_token(data, sender=None, receiver=None)
 
         self.assertIsNotNone(msg)
         self.assertIsNotNone(msg.signatures)
@@ -179,7 +179,9 @@ class TestJws(unittest.TestCase):
         # implementation
         jws_impl = Jws(alg='RS256')
         msg = jws_impl.create_message(payload)
-        token = msg.serialize_compact(jwk)
+
+        s = msg.signatures[0]
+        token = s.to_compact_token(msg.payload, jwk=jwk)
         items = token.split('.')
         self.assertEqual(len(msg.signatures), 1)
         self.assertEqual(msg.signatures[0]._protected.alg.value, 'RS256')
@@ -189,7 +191,7 @@ class TestJws(unittest.TestCase):
         self.assertEqual(msg.signatures[0].signature, items[2])
 
         #: restore token
-        msg2 = Message.from_token(token)
+        msg2 = Message.from_token(token, sender=None, receiver=None)
         self.assertEqual(len(msg2.signatures), 1)
         self.assertEqual(msg2.payload, base64.base64url_encode(payload))
         self.assertEqual(len(msg2.signatures), 1)
@@ -199,24 +201,22 @@ class TestJws(unittest.TestCase):
         self.assertEqual(msg2.signatures[0].signature, items[2])
 
         #: verify message
-        pub_jwk = jwk.public_jwk
-        self.assertTrue(pub_jwk.is_public)
-        self.assertTrue(msg2.verify(pub_jwk))
+        s = msg2.signatures[0]
+        self.assertTrue(s.verify(msg2.payload, jwk=jwk))
 
         #: wrong key fails
         new_jwk = Jwk.generate(KeyTypeEnum.RSA)
-        self.assertIsNotNone(new_jwk)
-        new_pub = new_jwk.public_jwk
-        self.assertTrue(new_pub.is_public)
-        self.assertFalse(msg2.verify(new_pub))
+        self.assertFalse(s.verify(msg2.payload, jwk=new_jwk))
 
         #: Json Serialization
         json_str = msg.serialize_json(jwk, indent=2)
 
         msg3 = Message.from_token(json_str)
         self.assertEqual(len(msg3.signatures), 1)
-        self.assertTrue(msg3.verify(pub_jwk))
-        self.assertFalse(msg3.verify(new_pub))
+        self.assertTrue(
+            msg3.signatures[0].verify(msg3.payload, jwk.public_jwk))
+        self.assertFalse(
+            msg3.signatures[0].verify(msg3.payload, new_jwk.public_jwk))
 
     def test_jws_appendix_a1(self):
         '''{"typ":"JWT",
@@ -255,7 +255,7 @@ class TestJws(unittest.TestCase):
             ''.join(chr(i) for i in payload_oct),
             base64.base64url_decode(payload_b64))
 
-        sinput_oct =  [
+        sinput_oct = [
             101, 121, 74, 48, 101, 88, 65,
             105, 79, 105, 74, 75, 86, 49, 81,
             105, 76, 65, 48, 75, 73, 67, 74,
@@ -310,20 +310,29 @@ class TestJws(unittest.TestCase):
         self.assertIsNotNone(jws)
         self.assertEqual(jws.alg, SigEnum.ES512)
 
-        jwk_str = '''
- {"kty":"EC",
-  "crv":"P-521",
-  "x":"AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk",
-  "y":"ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2",
-  "d":"AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C"
- }'''
-        import json
-        from Crypto.Util.number import long_to_bytes, bytes_to_long
+        jwk_dict = {
+            "kty": "EC",
+            "crv": "P-521",
+            "x": "".join([
+                "AekpBQ8ST8a8VcfVOTNl353vSrDCLL",
+                "JXmPk06wTjxrrjcBpXp5EOnYG_NjFZ",
+                "6OvLFV1jSfS9tsz4qUxcWceqwQGk",
+            ]),
+            "y": "".join([
+                "ADSmRA43Z1DSNx_RvcLI87cdL07l6j",
+                "QyyBXMoxVg_l2Th-x3S1WDhjDly79a",
+                "jL4Kkd0AZMaZmh9ubmf63e3kyMj2",
+            ]),
+            "d": "".join([
+                "AY5pb7A0UFiB3RELSD64fTLOSV_jaz",
+                "dF7fLYyuTw8lOfRhWg6Y6rUrPAxerE",
+                "zgdRhajnu0ferB0d53vM9mE15j2C"
+            ])}
 
-        jwk_dict = json.loads(jwk_str)
+        from Crypto.Util.number import bytes_to_long
 
         #: Key
-        jwk = Jwk.from_json(jwk_str)
+        jwk = Jwk(**jwk_dict)
         pub_jwk = jwk.public_jwk
         self.assertEqual(
             pub_jwk.key.public_key._pub[1],
@@ -335,17 +344,15 @@ class TestJws(unittest.TestCase):
 
         # Verify
         jws_token = ".".join([header_b64, payload_b64, signature_b64])
-        msg = Message.from_token(jws_token)
+        msg = Message.from_token(jws_token, sender=None, receiver=None)
         self.assertIsNotNone(msg)
         self.assertEqual(len(msg.signatures), 1)
         self.assertEqual(msg.signatures[0].signature, signature_b64)
-
 
         from jose.jwa.ec import EcdsaSigner
         sigbytes = base64.base64url_decode(msg.signatures[0].signature)
         self.assertEqual(len(sigbytes), 132)
         (r, s) = EcdsaSigner.decode_signature(sigbytes)
-
 
         R = [
             1, 220, 12, 129, 231, 171, 194, 209, 232, 135, 233,
@@ -366,8 +373,8 @@ class TestJws(unittest.TestCase):
         self.assertEqual(r, bytes_to_long("".join(chr(i) for i in R)))
         self.assertEqual(s, bytes_to_long("".join(chr(i) for i in S)))
 
-
-        self.assertTrue(msg.verify(pub_jwk))
+        self.assertTrue(msg.signatures[0].verify(
+                        msg.payload, jwk=jwk))
 
 
 if __name__ == '__main__':

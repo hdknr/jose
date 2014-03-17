@@ -1,4 +1,5 @@
 from jose import AlgorithmBaseEnum, BaseEnum
+from jose.jwa import keys
 #
 
 KeyEncDict = dict(
@@ -44,8 +45,15 @@ class KeyEncEnumBase(AlgorithmBaseEnum):
             dict(R=rsa, E=ec, A=aes, P=pbes2, G=gcm)[self.name[0]],
             self.name)
 
-#    def get_encryptor(self):
-#        return self.encryptor()
+    @property
+    def key_type(self):
+        return dict(
+            R=keys.KeyTypeEnum.RSA,
+            D=keys.KeyTypeEnum.OCT,
+            E=keys.KeyTypeEnum.EC,
+            G=keys.KeyTypeEnum.OCT,
+            P=keys.KeyTypeEnum.OCT,
+        )[self.name[0]]
 
 KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)
 

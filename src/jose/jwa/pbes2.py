@@ -22,8 +22,13 @@ class Pbes2KeyEncryptor(object):
                       macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
 
     @classmethod
-    def provide(cls, jwk, jwe, *args, **kwargs):
-        cek, iv = jwe.enc.encryptor.create_key_iv()
+    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+        if cek:
+            #: TODO: Check iv is valid or not
+            pass
+        else:
+            cek, iv = jwe.enc.encryptor.create_key_iv()
+
         jwe.p2s = jwe.p2s or base64.base64url_encode(
             Random.get_random_bytes(cls._wrapper._KEY_LEN))
         jwe.p2c = jwe.p2c or 1024

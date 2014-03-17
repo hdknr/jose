@@ -12,6 +12,11 @@ class TestStore(unittest.TestCase):
         jwk = Jwk()
         fs.save(jwk)
 
+    def test_conf(self):
+        from jose import conf
+        jwk = Jwk()
+        conf.store.save(jwk)
+
 
 if __name__ == '__main__':
     unittest.main()
