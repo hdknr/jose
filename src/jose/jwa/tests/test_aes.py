@@ -39,18 +39,21 @@ class TestAes(unittest.TestCase):
         self.assertEqual(urk, cek)
 
     def test_jwe_appendix_a2(self):
+        # PlainText
         plaint_oct = [
             76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97, 110, 100, 32,
             112, 114, 111, 115, 112, 101, 114, 46]
         plaint = ''.join(chr(i) for i in plaint_oct)
+        self.assertEqual(plaint, 'Live long and prosper.')
 
-        # Appendix A.2.1
+        # Appendix A.2.1 : JWE Header
         jwe_json = '{"alg":"RSA1_5","enc":"A128CBC-HS256"}'
         jwe_b64 = 'eyJhbGciOiJSU0ExXzUiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0'
         self.assertEqual(jwe_json, base64.base64url_decode(jwe_b64))
+        # Jwe object
         jwe = Jwe.from_json(jwe_json)
 
-        # Appendix A.2.2
+        # Appendix A.2.2 :CEK
         cek_oct = [
             4, 211, 31, 197, 84, 157, 252, 254,
             11, 100, 157, 250, 63, 170, 106,
@@ -58,8 +61,9 @@ class TestAes(unittest.TestCase):
             219, 200, 177, 0, 240, 143, 156,
             44, 207]
         cek = ''.join(chr(i) for i in cek_oct)
+        self.assertEqual(len(cek) * 8, 256)
 
-        # Appendix A.2.3
+        # Appendix A.2.3 : JWK Key
         jwk_dict = {
             "kty": "RSA",
             "n": "".join([
@@ -78,17 +82,15 @@ class TestAes(unittest.TestCase):
                 "-VvXLO5VZfCUAVLgW4dpf1SrtZjSt34YLsRarSb127reG_DUwg9Ch-Kyvj",
                 "T1SkHgUWRVGcyly7uvVGRSDwsXypdrNinPA4jlhoNdizK2zF2CWQ"])
         }
-
+        # Jwk object
         jwk = Jwk(**jwk_dict)
 
-        pri = jwk.key.private_key
-        pub = jwk.key.public_key
-
+        # JWE ENcrypted Key
         cek_enc_oct = [
             80, 104, 72, 58, 11, 130, 236, 139,
             132, 189, 255, 205, 61, 86, 151,
             176, 99, 40, 44, 233, 176, 189, 205,
-            70, 202, 169, 72, 40, 226, 181,
+            71, 202, 169, 72, 40, 226, 181,
             156, 223, 120, 156, 115, 232, 150,
             209, 145, 133, 104, 112, 237, 156,
             116, 250, 65, 102, 212, 210, 103,
@@ -121,11 +123,27 @@ class TestAes(unittest.TestCase):
             232, 90, 29, 147, 110, 169,
             146, 114, 165, 204, 71, 136, 41, 252]
         cek_enc = ''.join(chr(i) for i in cek_enc_oct)
+        cek_enc_b64 = ''.join([
+            "UGhIOguC7IuEvf_NPVaXsGMoLOmwvc1GyqlIKOK1nN94nHPoltGRhWhw7Zx0-kFm",
+            "1NJn8LE9XShH59_i8J0PH5ZZyNfGy2xGdULU7sHNF6Gp2vPLgNZ__deLKxGHZ7Pc",
+            "HALUzoOegEI-8E66jX2E4zyJKx-YxzZIItRzC5hlRirb6Y5Cl_p-ko3YvkkysZIF",
+            "NPccxRU7qve1WYPxqbb2Yw8kZqa2rMWI5ng8OtvzlV7elprCbuPhcCdZ6XDP0_F8",
+            "rkXds2vE4X-ncOIM8hAYHHi29NX0mcKiRaD0-D-ljQTP-cFPgwCp6X-nZZd9OHBv",
+            "-B3oWh2TbqmScqXMR4gp_A",
+        ])
+        # WARNING : cek_enc_oct may be wrong.
+#        self.assertEqual(cek_enc, base64.base64url_decode(cek_enc_b64))
+        cek_enc = base64.base64url_decode(cek_enc_b64)
+
+        # RSA 1.5
+        self.assertEqual(jwe.alg.name, 'RSA1_5')
         key_enc = jwe.alg.encryptor
-        cek_restore = key_enc.decrypt(pri, cek_enc)
+
+        cek_restore = key_enc.decrypt(jwk, cek_enc)
         self.assertEqual(cek, cek_restore)
-        cek_enc_2 = key_enc.encrypt(pub, cek)
-        cek_restore_2 = key_enc.decrypt(pri, cek_enc_2)
+
+        cek_enc_2 = key_enc.encrypt(jwk, cek)
+        cek_restore_2 = key_enc.decrypt(jwk, cek_enc_2)
         self.assertEqual(cek, cek_restore_2)
 
         # Appendix A.2.4
@@ -210,9 +228,8 @@ class TestAes(unittest.TestCase):
             "kty": "oct",
             "k": "GawgguFyGrWKav7AX4VKUg"
         }
-        kek = base64.base64url_decode(jwk_dict['k'])
-
-        uk = jwe.alg.encryptor.encrypt(kek, cek)
+        jwk = Jwk(**jwk_dict)
+        uk = jwe.alg.encryptor.encrypt(jwk, cek)
         self.assertEqual(cek_ci, uk)
 
         # Jwe Appendix A.3.4

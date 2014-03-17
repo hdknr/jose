@@ -115,17 +115,14 @@ class TestGcm(unittest.TestCase):
         key_enc = jwe.alg.encryptor
         from jose.jwa.rsa import RSA_OAEP
         self.assertEqual(key_enc, RSA_OAEP)
-        pub = jwk.key.public_key
-        pri = jwk.key.private_key
-        self.assertEqual(base64.long_to_b64(pub.n), jwk_dict['n'])
 
         # decrypt and encrypt CEK
-        dec_cek = key_enc.decrypt(pri, cek_enc_bytes)
+        dec_cek = key_enc.decrypt(jwk, cek_enc_bytes)
         self.assertEqual(dec_cek, cek)      # Appendix OK
         # --- encryption outcome MAY changes,
         #      but decrypted plaint is same as the original
-        enc_cek = key_enc.encrypt(pub, cek)
-        dec_cek_2 = key_enc.decrypt(pri, enc_cek)
+        enc_cek = key_enc.encrypt(jwk, cek)
+        dec_cek_2 = key_enc.decrypt(jwk, enc_cek)
         self.assertEqual(dec_cek, dec_cek_2)
 
         # Appendix A.1.4

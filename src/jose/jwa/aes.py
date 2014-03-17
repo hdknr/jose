@@ -90,7 +90,7 @@ class AesKeyEncryptor(BaseKeyEncryptor):
     @classmethod
     def encrypt(cls, jwk, cek, *args, **kwargs):
         key = jwk.key.shared_key[:cls._KEY_LEN]
-        return cls.kek_encrypt(key, cek_ci)
+        return cls.kek_encrypt(key, cek)
 
     @classmethod
     def decrypt(cls, jwk, cek_ci, *args, **kwargs):

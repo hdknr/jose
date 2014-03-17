@@ -5,11 +5,14 @@ from Crypto.Cipher import (
     PKCS1_v1_5 as PKCS1_v1_5_ENC,
     PKCS1_OAEP
 )
+from Crypto import Random
 #
 from jose.utils import base64
 from jose import BaseKey, BaseKeyEncryptor
 from jose.jwk import Jwk
 
+
+_sentinel = Random.get_random_bytes(32)
 
 # https://www.dlitz.net/software/pycrypto/api/current/
 #   Crypto.PublicKey.RSA.RSAImplementation-class.html
@@ -203,16 +206,20 @@ class RSA1_5(RsaKeyEncryptor):
 
     @classmethod
     def decrypt(cls, jwk, cek_ci, *args, **kwargs):
-        sentinel = "TODO:CHECK THIS"
-        return cls._cipher.new(jwk.key.private_key).decrypt(cek_ci, sentinel)
+        assert isinstance(jwk, Jwk)
+        assert Jwk.is_private
+        ret = cls._cipher.new(jwk.key.private_key).decrypt(cek_ci, _sentinel)
+        if ret == _sentinel:
+            return None
+        return ret
 
 
 class RSA_OAEP(RsaKeyEncryptor):
     _cipher = PKCS1_OAEP
 
     @classmethod
-    def decrypt(cls, key, cek_ci, *args, **kwargs):
-        return cls._cipher.new(key).decrypt(cek_ci)
+    def decrypt(cls, jwk, cek_ci, *args, **kwargs):
+        return cls._cipher.new(jwk.key.private_key).decrypt(cek_ci)
 
 if __name__ == '__main__':
     from jose.jwe import Jwe
