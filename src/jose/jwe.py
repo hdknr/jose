@@ -4,6 +4,7 @@ from jose import BaseEnum, BaseObject
 from jose.utils import merged
 import re
 import traceback
+import zlib
 
 # http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption-23#section-7.1
 _component = [
@@ -18,7 +19,18 @@ _compact = re.compile('\.'.join(_component))
 
 
 class ZipEnum(BaseEnum):
-    zip = 'DEF'
+    DEF = 'DEF'
+
+    def compress(self, data):
+        if self.value == 'DEF':
+            return zlib.compress(data)
+        return data
+
+    def uncompress(self, data):
+        if self.value == 'DEF':
+            return zlib.decompress(data)
+        return data
+
 
 BASE_FIELD = dict(
     enc=None,   #: EncEnum Algorithm
@@ -114,7 +126,7 @@ class Recipient(BaseObject):
 class Message(BaseObject):
     _fields = dict(
         protected=None,     # BASE64URL(UTF8(JWE Protected Header))
-        unprotected=None,   # JWE Shared Unprotected Header
+        unprotected=None,   # JWE Shared Unprotected Header (Json)
         iv='',              # BASE64URL(JWE Initialization Vector)
         aad='',             # BASE64URL(JWE AAD))
                             # (only used for Json Serialization)
@@ -130,6 +142,8 @@ class Message(BaseObject):
         if isinstance(self.recipients, list):
             self.recipients = map(lambda i: Recipient(**i),
                                   self.recipients)
+        if isinstance(self.protected, basestring):
+            self.protected = Jwe.from_json(self.protected)
 
     def create_ciphertext(self, recipient, plaint, receiver):
         ''' before call, recipient has to be provided _iv and _cek
@@ -139,8 +153,13 @@ class Message(BaseObject):
 
         self.recipients = []      # reset recipient
 
+        #: Two Jwe headered are merged.
+        header = self.protected.merge(self.unprotected)
+        if header.zip:
+            plaint = header.zip.compress(plaint)
+
         (self.ciphertext,
-         self.tag) = self.protected.enc.encryptor.encrypt(
+         self.tag) = header.enc.encryptor.encrypt(
             recipient._cek, plaint, self.iv, self.aad)
 
         self.recipients.append(recipient)
@@ -155,17 +174,24 @@ class Message(BaseObject):
 
     @property
     def plaintext(self):
-        if self._plaintext:
-            return self._plaintext
+        if self._plaint:
+            # already decrypted and cached
+            return self._plaint
+
+        #: Two Jwe headered are merged.
+        header = self.protected.merge(self.unprotected)
 
         for recipient in self.recipients:
             jwk = recipient.load_key(self.receiver).private_jwk
+            #: key agreement fails if receiver is not me.
             recipient.agree_key(jwk)
             if recipient._cek:
                 # only recipient has receiver's private key can agree
-                self._plaint = self.protected.enc.encryptor.decrypt(
+                self._plaint = header.enc.encryptor.decrypt(
                     recipient._cek, self.ciphertext,
                     self.iv, self.aad, self.tag)
+                if header.zip:
+                    self._plaint = header.zip.uncompress(self._plaint)
 
         return self._plaint
 

@@ -1,5 +1,6 @@
 from jose import BaseObject
 from jose.jwk import JwkSet
+import copy
 
 
 class Crypto(BaseObject):
@@ -32,6 +33,14 @@ class Crypto(BaseObject):
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
         keyset = JwkSet.load(owner, self.jku)
         return keyset.get(self.kty, self.kid)
+
+    def merge(self, crypto):
+        res = copy.deepcopy(self)
+        if crypto and type(self) == type(crypto):
+            for k, v in crypto.__dict__.items():
+                if v:
+                    setattr(res, k, v)
+        return res
 
 
 class CryptoMessage(BaseObject):
