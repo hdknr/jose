@@ -71,6 +71,14 @@ class BaseObject(object):
         kwargs['cls'] = self._serializer    #: Custom Serializer
         return json.dumps(self, *args, **kwargs)
 
+    def to_base64url(self, *args, **kwargs):
+        return base64.base64url_encode(
+            json.dumps(self, *args, **kwargs))
+
+    def to_dict(self, *args, **kwargs):
+        return json.loads(
+            self.to_json(*args, **kwargs))
+
     @classmethod
     def from_json(cls, json_str, base=None):
         base = base or cls
@@ -81,7 +89,7 @@ class BaseObject(object):
     def from_file(cls, json_file, base=None):
         base = base or cls
         with open(json_file) as data:
-            obj = base(**json.load(data))
+            obj = base(** json.load(data))
         return obj
 
     @classmethod

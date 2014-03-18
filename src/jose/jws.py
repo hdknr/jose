@@ -4,7 +4,6 @@ from jose.utils import base64
 from jose.jwa.sigs import SigEnum
 import re
 import traceback
-import copy
 
 _component = [
     r'^(?P<protected>[^\.]+)',
@@ -22,14 +21,6 @@ class Jws(Crypto):
         super(Jws, self).__init__(**kwargs)
         if isinstance(self.alg, basestring):
             self.alg = SigEnum.create(self.alg)
-
-    def merge(self, jws):
-        res = copy.deepcopy(self)
-        if jws:
-            for k, v in jws.__dict__.items():
-                if v:
-                    setattr(res, k, v)
-        return res
 
     def sign(self, signing_input, jwk=None):
         #: TODO: load key from store if signing_jwk  is None
@@ -55,6 +46,7 @@ class Jws(Crypto):
 class Signature(BaseObject):
     _fields = dict(
         protected=None,    #: base64url(utf8(JWS Protected Header))
+                           #: "protected" means it is used as AAD
         header=None,       #: Json object of Header Claims
         signature='',      #: base64url(utf8(JWS Signature))
     )

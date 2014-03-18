@@ -53,3 +53,7 @@ def import_class(class_path):
 # Merge list of dicts to single dict
 
 merged = lambda dicts: {k: v for dic in dicts for k, v in dic.items()}
+
+# alias
+_BE = base64.base64url_encode
+_BD = base64.base64url_decode

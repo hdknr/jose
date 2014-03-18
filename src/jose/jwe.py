@@ -1,7 +1,7 @@
-from crypto import Crypto
+from crypto import Crypto, CryptoMessage
 from jose.jwa.encs import EncEnum, KeyEncEnum
 from jose import BaseEnum, BaseObject
-from jose.utils import merged
+from jose.utils import merged, _BD
 import re
 import traceback
 import zlib
@@ -93,6 +93,8 @@ class Jwe(Crypto):
 
 
 class Recipient(BaseObject):
+    ''' Per Receiver CEK Management
+    '''
     _fields = dict(
         header=None,            # JWE Per-Recipient Unprotected Header
         encrypted_key=None,     # BASE64URL(JWE Encrypted Key)
@@ -104,26 +106,54 @@ class Recipient(BaseObject):
         # Jwe
         if isinstance(self.header, basestring):
             self.header = Jwe.from_base64(self.header)
+        elif isinstance(self.header, dict):
+            self.header = Jwe(**self.header)
 
         self._cek, self._iv = None, None
 
-    def provide_key(self, jwk, cek=None, iv=None):
+    def provide_key(self, jwk, cek=None, iv=None, jwe=None):
         assert jwk.is_public, "providing jwk must be public."
-        (self._cek, self._iv, self.encrypted_key
-         ) = self.jwe.alg.encryptor.provide(self.header, jwk, cek, iv)
-        return self._cek, self._iv
+        jwe = jwe and jwe.merge(self.header) or self.header
+        (self.cek, self.iv, self.encrypted_key
+         ) = jwe.alg.encryptor.provide(self.header, jwk, cek, iv)
+        return self.cek, self.iv
 
-    def agree_key(self, jwk):
+    def agree_key(self, jwk, jwe=None):
         assert jwk.is_private, "Agreement jwk must be private."
-        self._cek = self.header.alg.encryptor.agree(
+        jwe = jwe and jwe.merge(self.header) or self.header
+
+        self.cek = jwe.alg.encryptor.agree(
             self.header, self.encrypted_key, jwk)
+        return self.cek
+
+    def load_key(self, receiver, jwe=None):
+        jwe = jwe and jwe.merge(self.header) or self.header
+        return jwe.load_key(receiver)
+
+    @property
+    def cek(self):
+        # CEK is not serizalied.
         return self._cek
 
-    def load_key(self, receiver):
-        return self.header.load_key(receiver)
+    @cek.setter
+    def cek(self, value):
+        # CEK is not serizalied.
+        self._cek = value
+
+    @property
+    def iv(self):
+        # IV is not serizalied.
+        return self._iv
+
+    @iv.setter
+    def iv(self, value):
+        # IV is not serizalied.
+        self._iv = value
 
 
-class Message(BaseObject):
+class Message(CryptoMessage):
+    '''  Encryptoed Message Container
+    '''
     _fields = dict(
         protected=None,     # BASE64URL(UTF8(JWE Protected Header))
         unprotected=None,   # JWE Shared Unprotected Header (Json)
@@ -136,72 +166,137 @@ class Message(BaseObject):
     )
 
     def __init__(self, *args, **kwargs):
+        self._protected = Jwe()  # `protected` cache as Jwe object
         self._plaintext = None
         self._cek = None
+
         super(Message, self).__init__(*args, **kwargs)
         if isinstance(self.recipients, list):
             self.recipients = map(lambda i: Recipient(**i),
                                   self.recipients)
-        if isinstance(self.protected, basestring):
-            self.protected = Jwe.from_json(self.protected)
 
-    def create_ciphertext(self, recipient, plaint, receiver):
+        if isinstance(self.protected, basestring):
+            self._protected = Jwe.from_base64(self.protected)
+            if isinstance(self.protected, unicode):
+                self.protected = self.protected.encode('utf8')
+        elif isinstance(self.protected, Jwe):
+            self._protected = self.protected
+            self.protected = self._protected.to_base64url()
+
+        if isinstance(self.unprotected, dict):
+            self.unprotected = Jwe(**self.unprotected)
+
+    def header(self, index=-1):
+        res = self._protected.merge(self.unprotected)
+        if index < 0:
+            return res
+        return res.merge(self.recipients[index].header)
+
+    @property
+    def auth_data(self):
+        if self.aad:
+            # self.aad is exclusively for JSON Serializatio
+            # Jwe 5.1
+            return self.protected + "." + self.aad
+        return self.protected
+
+    def zip(self, src, unzip=False):
+        ''' if "protected" has "zip", compress src
+            <Spec Jwe 4.1.3>
+        '''
+        if self._protected and self._protected.zip:
+            if unzip:
+                return self._protected.zip.uncompress(src)
+            else:
+                return self._protected.zip.compress(src)
+        return src
+
+    def create_ciphertext(self, recipient, receiver):
         ''' before call, recipient has to be provided _iv and _cek
         '''
+        #: Find key for encrypt CEK
         jwk = recipient.load_key(receiver).public_jwk
-        (self._cek, self.iv) = recipient.provide_key(jwk)
+
+        #: Provide CEK & IV
+        (self.cek, self.iv) = recipient.provide_key(jwk)
+
+        #: Content encryption
+        (self.ciphertext,
+         self.tag) = self.encrypt()
 
         self.recipients = []      # reset recipient
-
-        #: Two Jwe headered are merged.
-        header = self.protected.merge(self.unprotected)
-        if header.zip:
-            plaint = header.zip.compress(plaint)
-
-        (self.ciphertext,
-         self.tag) = header.enc.encryptor.encrypt(
-            recipient._cek, plaint, self.iv, self.aad)
-
         self.recipients.append(recipient)
+
+    def encrypt(self):
+        assert self.cek
+        assert self.iv
+        assert self.auth_data
+
+        header = self.header()           # Two Jwe headered are merged.
+        plaint = self.compress(self.plaintext)   # 'zip' compression
+        return header.enc.encryptor.encrypt(
+            self.cek, plaint,
+            _BD(self.iv, self.auth_data))
+
+    def decrypt(self):
+        header = self.header()           # Two Jwe headered are merged.
+        plaint, is_valid = header.enc.encryptor.decrypt(
+            self.cek, _BD(self.ciphertext),
+            _BD(self.iv),
+            self.auth_data,
+            _BD(self.tag))
+
+        # TODO: is_valid == False, raise execption
+
+        return self.zip(plaint, unzip=True)
 
     def add_recipient(self, recipient, receiver):
         ''' before call, recipient has to be provided with
             messsage's CEK and IV
         '''
         # use existent cek and iv
-        recipient.provide(receiver, self.cek, self.iv)
+        header = self.header()
+        recipient.provide(receiver, self.cek, self.iv, jwe=header)
         self.recipients.append(recipient)
 
-    @property
-    def plaintext(self):
-        if self._plaint:
-            # already decrypted and cached
-            return self._plaint
-
-        #: Two Jwe headered are merged.
-        header = self.protected.merge(self.unprotected)
-
+    def find_cek(self, me=None):
+        header = self.header()
         for recipient in self.recipients:
-            jwk = recipient.load_key(self.receiver).private_jwk
+            me = me or self.receiver
+            jwk = recipient.load_key(me).private_jwk
             #: key agreement fails if receiver is not me.
-            recipient.agree_key(jwk)
-            if recipient._cek:
-                # only recipient has receiver's private key can agree
-                self._plaint = header.enc.encryptor.decrypt(
-                    recipient._cek, self.ciphertext,
-                    self.iv, self.aad, self.tag)
-                if header.zip:
-                    self._plaint = header.zip.uncompress(self._plaint)
-
-        return self._plaint
+            self.cek = recipient.agree_key(jwk, jwk=header)
+            return self.cek
+        return None
 
     @property
     def cek(self):
+        # CEK is not serizalied.
         return self._cek
 
     @cek.setter
     def cek(self, value):
+        # CEK is not serizalied.
         self._cek = value
+
+    @property
+    def plaintext(self):
+        if self._plaintext:
+            # already decrypted and cached
+            return self._plaintext
+
+        #: If CEK has not been found
+        if not self.cek:
+            self.find_cek()
+
+        self._plaintext = self.decrypt()
+
+        return self._plaintext
+
+    @plaintext.setter
+    def plaintext(self, value):
+        # CEK is not serizalied.
+        self._plaintext = value
 
     @classmethod
     def from_token(cls, token, sender, receiver):

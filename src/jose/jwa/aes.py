@@ -161,7 +161,7 @@ class AesContentEncrypor(BaseContentEncryptor):
     @classmethod
     def mac_input(cls, ciphert, iv, assoc):
         al = to_al(assoc)
-        return assoc + iv + ciphert + al
+        return b"".join([assoc, iv, ciphert, al])
 
     @classmethod
     def make_tag(cls, mac_k, ciphert, iv, aad):
