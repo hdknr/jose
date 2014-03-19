@@ -121,7 +121,7 @@ class AlgorithmBaseEnum(BaseEnum):
 class BaseKey(object):
     def __init__(self, kty, material=None, jwk=None,
                  *args, **kwargs):
-        self.kty = kty  #: KeyTypeEnum
+#        self.kty = kty  #: KeyTypeEnum
         self.material = material
         if self.material is None and jwk:
             self.from_jwk(jwk)

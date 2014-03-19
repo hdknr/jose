@@ -42,6 +42,10 @@ class Crypto(BaseObject):
                     setattr(res, k, v)
         return res
 
+    def set_value(self, key, value):
+        if key in self._fields and value:
+            setattr(self, key, value)
+
 
 class CryptoMessage(BaseObject):
     def __init__(self, _sender=None, _receiver=None, *args, **kwargs):

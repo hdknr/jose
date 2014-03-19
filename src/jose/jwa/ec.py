@@ -44,7 +44,7 @@ class Key(BaseKey):
         else:
             self.material = EccKey(public_key=_jwk_to_pub(jwk))
 
-    def init_material(self, curve=None, **kwargs):
+    def init_material(self, curve, **kwargs):
         ''' generate new key material '''
         if isinstance(curve, basestring):
             curve = CurveEnum.create(curve)
