@@ -60,20 +60,6 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
             self._key = self.kty.create_key(jwk=self)
         return self._key
 
-#    @classmethod
-#    def from_json(cls, json_str, base=None):
-#        obj = BaseObject.from_json(json_str, cls)
-#        return obj
-
-#    @classmethod
-#    def from_uri(cls, uri):
-#        json_str = requests.get(uri).content
-#        return cls.from_json(json_str)
-
-#    @classmethod
-#    def from_uri_cache(cls, uri):
-#        return cls.load(uri) or cls.from_uri(uri)
-
     @property
     def public_jwk(self):
         return self.key.public_jwk
