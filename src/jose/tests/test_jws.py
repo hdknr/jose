@@ -206,6 +206,7 @@ class TestJws(unittest.TestCase):
 
         #: wrong key fails
         new_jwk = Jwk.generate(KeyTypeEnum.RSA)
+
         self.assertFalse(s.verify(msg2.payload, jwk=new_jwk))
 
         #: Json Serialization

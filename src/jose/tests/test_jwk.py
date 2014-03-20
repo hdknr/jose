@@ -19,6 +19,11 @@ class TestJwk(unittest.TestCase):
         self.assertEquals(jwk.kty, jwk2.kty)
         self.assertEquals(jwk.use, jwk2.use)
 
+    def test_generate(self):
+        for name, kty in KeyTypeEnum.__members__.items():
+            jwk = Jwk.generate(kty=kty, kid="hoge")
+            print jwk.to_json(indent=2)
+
     def test_jwkset(self):
         jwkset = JwkSet()
         jwkset.keys.append(Jwk(kid='kidRsa', kty=keys.KeyTypeEnum.RSA))
