@@ -119,12 +119,28 @@ class AlgorithmBaseEnum(BaseEnum):
 
 
 class BaseKey(object):
-    def __init__(self, kty, material=None, jwk=None,
-                 *args, **kwargs):
-#        self.kty = kty  #: KeyTypeEnum
+    def __init__(
+            self, kty, material=None, jwk=None,
+            *args, **kwargs):
+
+        assert any([material is None,
+                    isinstance(material, BaseKey)])
+
         self.material = material
-        if self.material is None and jwk:
-            self.from_jwk(jwk)
+        if not self.material:
+            if jwk:
+                self.from_jwk(jwk)
+            else:
+                self.init_material(*args, **kwargs)
+
+    def init__material(self, *args, **kwargs):
+        raise NotImplemented
+
+    def to_jwk(self, jwk):
+        raise NotImplemented
+
+    def from_jwk(self, jwk):
+        raise NotImplemented
 
     @property
     def is_public(self):

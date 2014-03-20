@@ -7,9 +7,10 @@ from Crypto.Cipher import (
 )
 from Crypto import Random
 #
-from jose.utils import base64
+from jose.utils import base64, _BE, _BD, _LBE, _LBD
 from jose import BaseKey, BaseKeyEncryptor
 from jose.jwk import Jwk
+from jose.jwa import keys
 
 
 _sentinel = Random.get_random_bytes(32)
@@ -32,23 +33,33 @@ def generate_key(bits=1024):
 
 class Key(BaseKey):
 
+    def init_material(self, bits=1024, **kwargs):
+        self.material = RSA.generate(bits)
+
+    def to_jwk(self, jwk):
+        jwk.kty = keys.KeyTypeEnum.RSA
+        jwk.n = _LBE(self.material.n)
+        jwk.e = _LBE(self.material.e)
+        if self.is_private:
+            jwk.d = _LBE(self.material.d)
+            jwk.p = _LBE(self.material.p)
+            jwk.q = _LBE(self.material.q)
+            jwk.qi = _LBE(self.material.u)
+
     def from_jwk(self, jwk):
         if jwk.d:   #: possibly private
             self.material = private_construct(
-                *[base64.long_from_b64(i) for i in [
+                *[_LBD(i) for i in [
                     jwk.n, jwk.e,
                     jwk.d, jwk.p, jwk.q, jwk.qi,
                 ]]
             )
         else:
             self.material = public_construct(
-                *[base64.long_from_b64(i) for i in [
+                *[_LBD(i) for i in [
                     jwk.n, jwk.e,
                 ]]
             )
-
-    def init_material(self, bits=1024, **kwargs):
-        self.material = RSA.generate(bits)
 
     @property
     def public_tuple(self):

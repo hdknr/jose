@@ -35,7 +35,7 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
         x5t="",       #: X.509 Thumprint
     )
 
-    def __init__(self, **kwargs):
+    def __init__(self, key=None, **kwargs):
         super(Jwk, self).__init__(**kwargs)
 
         if isinstance(self.kty, basestring):
@@ -51,6 +51,8 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
             self.key_ops = [KeyOpsEnum(**ops)
                             for ops in self.key_ops
                             if isinstance(ops, dict)]
+        if key:
+            key.to_jwk(self)
 
     @property
     def key(self):
@@ -93,9 +95,9 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
         if isinstance(kty, basestring):
             kty = keys.KeyTypeEnum.create(kty)
         assert kty
-        key = kty.create_key()
-        key.init_material(*args, **kwargs)
-        return key.private_jwk
+        key = kty.create_key(*args, **kwargs)
+        jwk = Jwk(kty=kty, key=key, **kwargs)
+        return jwk
 
 
 class JwkSet(BaseObject):

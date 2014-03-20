@@ -29,9 +29,12 @@ class Jws(Crypto):
         signature = signer.sign(jwk, signing_input)
         return signature
 
-    def verify(self, signing_input, signature, jwk=None):
+    def verify(self, signing_input, signature, jwk):
         #: TODO: load key from store if signing_jwk  is None
-        assert jwk is not None
+        assert jwk
+        assert signing_input
+        assert signature
+
         signer = self.alg.signer
         return signer.verify(jwk, signing_input, signature)
 

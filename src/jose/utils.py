@@ -57,3 +57,5 @@ merged = lambda dicts: {k: v for dic in dicts for k, v in dic.items()}
 # alias
 _BE = base64.base64url_encode
 _BD = base64.base64url_decode
+_LBE = base64.long_to_b64
+_LBD = base64.long_from_b64

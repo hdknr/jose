@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from jose.utils import base64
+from jose.utils import base64, _BE, _BD
 from jose.jwk import Jwk
 from jose.jwe import Jwe
+from jose.jwa import encs
 
 
 class TestAes(unittest.TestCase):
@@ -224,11 +225,17 @@ class TestAes(unittest.TestCase):
             76, 124, 193, 11, 98, 37, 173, 61, 104, 57]
         cek_ci = ''.join(chr(i) for i in cek_ci_oct)
 
+        #: Jwk
         jwk_dict = {
             "kty": "oct",
             "k": "GawgguFyGrWKav7AX4VKUg"
         }
         jwk = Jwk(**jwk_dict)
+
+        self.assertEqual(_BD(jwk_dict['k']),
+                         jwk.key.shared_key)
+        # Wrap
+        self.assertEqual(jwe.alg, encs.KeyEncEnum.A128KW)
         uk = jwe.alg.encryptor.encrypt(jwk, cek)
         self.assertEqual(cek_ci, uk)
 

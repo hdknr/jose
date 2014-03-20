@@ -33,18 +33,21 @@ class HS512(HmacSigner):
 
 
 from jose import BaseKey
-from jose.utils import base64
+from jose.utils import _BE, _BD
 from jose.jwk import Jwk
 from Crypto import Random
 
 
 class Key(BaseKey):
 
-    def from_jwk(self, jwk):
-        self.material = base64.base64url_decode(jwk.k)
-
     def init_material(self, length=200, **kwargs):
         self.material = Random.get_random_bytes(length)
+
+    def to_jwk(self, jwk):
+        jwk.k = _BE(self.material)
+
+    def from_jwk(self, jwk):
+        self.material = _BD(jwk.k)
 
     @property
     def public_tuple(self):
@@ -61,7 +64,7 @@ class Key(BaseKey):
     def private_jwk(self):
         jwk = Jwk(
             kty="oct",
-            k=base64.base64url_encode(self.material),
+            k=_BE(self.material),
         )
         return jwk
 

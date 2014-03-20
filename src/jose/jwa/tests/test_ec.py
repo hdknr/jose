@@ -286,23 +286,11 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         self.assertEqual("VqqN6vgjbSBcIijNcacQGg",
                          base64.base64url_encode(_derived_key_u))
 
-
     def test_jwk(self):
         from jose.jwa.keys import KeyTypeEnum, CurveEnum
-        from jose.jwa.ec import Key
 
         # void key
         key = KeyTypeEnum.EC.create_key()
-        self.assertTrue(isinstance(key, Key))
-        self.assertEqual(key.kty, KeyTypeEnum.EC)
-
-        self.assertFalse(key.is_public)
-        self.assertFalse(key.is_private)
-        self.assertIsNone(key.material)
-        self.assertIsNone(key.public_key)
-        self.assertIsNone(key.private_key)
-        self.assertIsNone(key.public_jwk)
-        self.assertIsNone(key.private_jwk)
 
         # new private key
         key.init_material(curve=CurveEnum.P_256)

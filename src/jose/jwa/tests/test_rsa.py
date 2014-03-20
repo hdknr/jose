@@ -74,23 +74,9 @@ class TestRsaKey(unittest.TestCase):
         print pub.exportKey('PEM')
 
     def test_jwk(self):
-        from jose.jwa.rsa import Key
-
-        # void key
-        key = KeyTypeEnum.RSA.create_key()
-        self.assertTrue(isinstance(key, Key))
-        self.assertEqual(key.kty, KeyTypeEnum.RSA)
-
-        self.assertFalse(key.is_public)
-        self.assertFalse(key.is_private)
-        self.assertIsNone(key.material)
-        self.assertIsNone(key.public_key)
-        self.assertIsNone(key.private_key)
-        self.assertIsNone(key.public_jwk)
-        self.assertIsNone(key.private_jwk)
 
         # new private key
-        key.init_material()
+        key = KeyTypeEnum.RSA.create_key()
         self.assertTrue(key.is_private)
         self.assertFalse(key.is_public)
         self.assertIsNotNone(key.material)
