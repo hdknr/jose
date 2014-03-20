@@ -23,3 +23,30 @@ def dispatch(symbol_dict, description=""):
     args, unknown = parser.parse_known_args()
 
     symbol_dict.get(args.command + "_command", command_not_found)()
+
+
+class Command(ArgumentParser):
+    Name = None
+
+    def run(self):
+        raise NotImplemented
+
+    @classmethod
+    def dispatch(cls, symbols=None):
+        symbols = symbols or globals()  # dict of  name:type
+        parser = ArgumentParser(description="Jwk Command")
+        parser.add_argument('command', help='|'.join(list_commands(__name__)),)
+        args, unknown = parser.parse_known_args()
+
+        command = None
+        for k, v in symbols.items():
+            try:
+                if issubclass(v, cls) and v != cls:
+                    if v.Name == args.command:
+                        command = v()
+                        break
+            except:
+                pass
+
+        if command:
+            return command.run()

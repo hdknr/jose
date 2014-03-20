@@ -1,11 +1,12 @@
 from argparse import ArgumentParser
 import sys
+import os
 from jose import commands
 from jose.jwa import sigs
 from jose.jws import Jws
 from jose.jwk import Jwk
 from jose.jwa.keys import CurveEnum, KeyTypeEnum
-from jose import BaseObject
+from jose import BaseObject, conf
 from jose.utils import _BE, _BD
 
 
@@ -13,33 +14,47 @@ class Sample(BaseObject):
     pass
 
 
+class SampleArgs(ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super(SampleArgs, self).__init__(description='JWS Sample Generator')
+        self.add_argument('command', help="=sample")
+        self.add_argument('alg', help="jws 'alg' claim")
+        self.add_argument('params', nargs='*', help="jws-claim=value")
+
+        self.add_argument(
+            '-p', '--payload', dest="payload",
+            default=None,
+            help="With no payload, read stdin or generate random.")
+
+        self.add_argument(
+            '-c', '--curve', dest="curve",
+            default='P-256',
+            help="ECDSA Key Curve")
+
+        self.add_argument(
+            '-b', '--bits', dest="bits", default=2048, type=int,
+            help="RSA key bits")
+
+        self.add_argument(
+            '-l', '--lentht', dest="length", default=64, type=int,
+            help="Share Key Octets")
+
+        self.add_argument(
+            '-j', '--jwk', dest="jwk",
+            default=None,
+            help="With no Jws file, create file")
+
+        self.add_argument(
+            '-s', '--store', dest="store",
+            default=None, type=str,
+            help="Key Store path")
+
+
 def sample_command():
-    parser = ArgumentParser(description='JWS Sample Generator')
-    parser.add_argument('command', help="=sample")
-    parser.add_argument('alg', help="jws 'alg' claim")
-    parser.add_argument('params', nargs='*', help="jws-claim=value")
+    args = SampleArgs().parse_args()
 
-    parser.add_argument('-j', '--jwk', dest="jwk",
-                        default=None,
-                        help="With no Jws file, create file")
-
-    parser.add_argument('-p', '--payload', dest="payload",
-                        default=None,
-                        help="With no payload, read stdin or generate random.")
-
-    parser.add_argument('-c', '--curve', dest="curve",
-                        default='P-256',
-                        help="ECDSA Key Curve")
-
-    parser.add_argument('-b', '--bits', dest="bits",
-                        default=2048, type=int,
-                        help="RSA key bits")
-
-    parser.add_argument('-l', '--lentht', dest="length",
-                        default=64, type=int,
-                        help="Share Key Octets")
-
-    args = parser.parse_args()
+    if args.store:
+        conf.store.base = os.path.abspath(args.store)
 
     sample = Sample()
 
