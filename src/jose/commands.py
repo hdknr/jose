@@ -25,33 +25,6 @@ def dispatch(symbol_dict, description=""):
     symbol_dict.get(args.command + "_command", command_not_found)()
 
 
-class Command(argparse.ArgumentParser):
-    Name = None
-
-    def run(self):
-        raise NotImplemented
-
-    @classmethod
-    def dispatch(cls, symbols=None):
-        symbols = symbols or globals()  # dict of  name:type
-        parser = argparse.ArgumentParser(description="Jwk Command")
-        parser.add_argument('command', help='|'.join(list_commands(__name__)),)
-        args, unknown = parser.parse_known_args()
-
-        command = None
-        for k, v in symbols.items():
-            try:
-                if issubclass(v, cls) and v != cls:
-                    if v.Name == args.command:
-                        command = v
-                        break
-            except:
-                pass
-
-        if command:
-            return command().run()
-
-
 class StoreKeyValuePair(argparse.Action):
     def __call__(self, parser, namespace,
                  values, option_string=None, *args, **kwargs):
@@ -61,3 +34,34 @@ class StoreKeyValuePair(argparse.Action):
         for value in values:
             k, v = value.split('=')
             obj[k.replace(' ', '')] = v.replace(' ', '')
+
+
+class Command(object):
+    Name = None
+
+    def __init__(self, parser):
+        command = parser.add_parser(self.Name)
+        command.set_defaults(function=self.run)
+        self.set_args(command)
+
+    def set_args(self, parser):
+        pass
+
+    def run(self, args):
+        raise NotImplemented
+
+    @classmethod
+    def set_global_args(cls, parser):
+        pass
+
+    @classmethod
+    def dispatch(cls, commands):
+        parser = argparse.ArgumentParser()
+        cls.set_global_args(parser)
+        subparsers = parser.add_subparsers(help='sub-command help')
+
+        for command in commands:
+            command(subparsers)
+
+        args = parser.parse_args()
+        args.function(args)
