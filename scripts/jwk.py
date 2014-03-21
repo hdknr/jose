@@ -60,6 +60,8 @@ class JwkCommand(commands.Command):
                 inits['crv'] = CurveEnum.create(self.args.curve)
             elif self.args.kty == KeyTypeEnum.OCT:
                 inits['length'] = self.args.length
+        if hasattr(self.args, 'params'):
+            self.params = dict([i.split('=') for i in self.args.params])
 
         if self.args.kid:
             inits['kid'] = self.args.kid
@@ -92,18 +94,24 @@ class SelectCommand(JwkCommand):
     def __init__(self, *args, **kwargs):
         super(SelectCommand, self).__init__(description='Jwk Select')
         self.add_argument('command', help=self.Name)
-        self.add_argument('kty', help="KeyType", nargs='?')
-        self.add_argument('params', nargs='*', help="jws-claim=value")
+        self.add_argument('params', nargs='*',
+                          help="jws-claim=value")
         self.add_argument(
             '-p', '--public', dest="public", action="store_true",
             help="List Public Set")
 
     def run(self):
         self.init()
+
         jwkset = JwkSet.load(self.args.id, self.args.jku) or JwkSet()
+
         if self.args.public:
             jwkset = jwkset.public_set
-        print jwkset.to_json(indent=2)
+
+        if self.params.get('index', None) is not None:
+            print jwkset.keys[int(self.params['index'])].to_json(indent=2)
+        else:
+            print jwkset.to_json(indent=2)
 
 
 class DeleteCommand(JwkCommand):
@@ -118,10 +126,12 @@ class DeleteCommand(JwkCommand):
     def run(self):
         self.init()
         jwkset = JwkSet.load(self.args.id, self.args.jku) or JwkSet()
-        if self.args.index is not None:
-            jwkset.keys.pop(self.args.index)
-            jwkset.save(self.args.id, self.args.jku)
 
+        if self.params.get('index', None) is not None:
+            removed = jwkset.keys.pop(int(self.params['index']))
+            jwkset.save(self.args.id, self.args.jku)
+            print removed.to_json(indent=2)
+            return
 
 if __name__ == '__main__':
     JwkCommand.dispatch(globals())

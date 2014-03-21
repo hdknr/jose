@@ -1,5 +1,5 @@
 import sys
-from argparse import ArgumentParser
+import argparse
 from Crypto import Random
 
 random_text = lambda n=32: Random.get_random_bytes(n).encode('hex')
@@ -18,14 +18,14 @@ def command_not_found():
 def dispatch(symbol_dict, description=""):
     '''  symbol_dict : globals()
     '''
-    parser = ArgumentParser(description=description)
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('command', help='|'.join(list_commands(__name__)),)
     args, unknown = parser.parse_known_args()
 
     symbol_dict.get(args.command + "_command", command_not_found)()
 
 
-class Command(ArgumentParser):
+class Command(argparse.ArgumentParser):
     Name = None
 
     def run(self):
@@ -34,7 +34,7 @@ class Command(ArgumentParser):
     @classmethod
     def dispatch(cls, symbols=None):
         symbols = symbols or globals()  # dict of  name:type
-        parser = ArgumentParser(description="Jwk Command")
+        parser = argparse.ArgumentParser(description="Jwk Command")
         parser.add_argument('command', help='|'.join(list_commands(__name__)),)
         args, unknown = parser.parse_known_args()
 
@@ -50,3 +50,14 @@ class Command(ArgumentParser):
 
         if command:
             return command().run()
+
+
+class StoreKeyValuePair(argparse.Action):
+    def __call__(self, parser, namespace,
+                 values, option_string=None, *args, **kwargs):
+        print namespace, dir(namespace)
+        print parser, dir(parser)
+        obj = {}
+        for value in values:
+            k, v = value.split('=')
+            obj[k.replace(' ', '')] = v.replace(' ', '')
