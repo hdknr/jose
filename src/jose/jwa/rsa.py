@@ -33,8 +33,12 @@ def generate_key(bits=1024):
 
 class Key(BaseKey):
 
-    def init_material(self, bits=1024, **kwargs):
-        self.material = RSA.generate(bits)
+    def init_material(self, length=1024, **kwargs):
+        self.material = RSA.generate(length)
+
+    @property
+    def length(self):
+        return len(_BD(_LBE(self.material.n)))
 
     def to_jwk(self, jwk):
         jwk.kty = keys.KeyTypeEnum.RSA

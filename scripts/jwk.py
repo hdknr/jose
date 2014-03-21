@@ -37,6 +37,34 @@ class JwkCommand(commands.Command):
             default=None, type=str,
             help="Key Store path")
 
+        self.add_argument(
+            '-i', '--id', dest="id",
+            default='me', type=str,
+            help="Entity Identifier")
+
+        self.add_argument(
+            '-u', '--uri', dest="jku",
+            default=None, type=str,
+            help="Jku")
+
+    def init(self):
+        self.args = self.parse_args()
+        inits = {}
+        if hasattr(self.args, 'kty'):
+            self.args.kty = KeyTypeEnum.create(self.args.kty)
+            inits['kty'] = self.args.kty
+
+            if self.args.kty == KeyTypeEnum.RSA:
+                inits['length'] = self.args.bits
+            elif self.args.kty == KeyTypeEnum.EC:
+                inits['crv'] = CurveEnum.create(self.args.curve)
+            elif self.args.kty == KeyTypeEnum.OCT:
+                inits['length'] = self.args.length
+
+        if self.args.kid:
+            inits['kid'] = self.args.kid
+        return inits
+
 
 class CreateCommand(JwkCommand):
     Name = 'create'
@@ -52,24 +80,48 @@ class CreateCommand(JwkCommand):
             default=None,
             help="With no payload, read stdin or generate random.")
 
-    def init(self):
-        self.args = self.parse_args()
-        self.args.kty = KeyTypeEnum.create(self.args.kty)
-        assert self.args.kty
-        inits = dict(kty=self.args.kty)
+    def run(self):
+        inits = self.init()
+        jwk = Jwk.generate(**inits)
+        jwk.add_to(self.args.id, self.args.jku)
 
-        if self.args.kty == KeyTypeEnum.RSA:
-            inits['bits'] = self.args.bits
-        elif self.args.kty == KeyTypeEnum.EC:
-            inits['curve'] = CurveEnum.create(self.args.curve)
-        elif self.args.kty == KeyTypeEnum.OCT:
-            inits['length'] = self.args.length
-        inits['kid'] = 'xxx'
-        return inits
+
+class SelectCommand(JwkCommand):
+    Name = 'select'
+
+    def __init__(self, *args, **kwargs):
+        super(SelectCommand, self).__init__(description='Jwk Select')
+        self.add_argument('command', help=self.Name)
+        self.add_argument('kty', help="KeyType", nargs='?')
+        self.add_argument('params', nargs='*', help="jws-claim=value")
+        self.add_argument(
+            '-p', '--public', dest="public", action="store_true",
+            help="List Public Set")
 
     def run(self):
-        jwkset = JwkSet(keys=[Jwk.generate(** self.init())])
+        self.init()
+        jwkset = JwkSet.load(self.args.id, self.args.jku) or JwkSet()
+        if self.args.public:
+            jwkset = jwkset.public_set
         print jwkset.to_json(indent=2)
+
+
+class DeleteCommand(JwkCommand):
+    Name = 'delete'
+
+    def __init__(self, *args, **kwargs):
+        super(DeleteCommand, self).__init__(description='Jwk Select')
+        self.add_argument('command', help=self.Name)
+        self.add_argument('index', help="KeyType", nargs='?',
+                          default=None, type=int)
+
+    def run(self):
+        self.init()
+        jwkset = JwkSet.load(self.args.id, self.args.jku) or JwkSet()
+        if self.args.index is not None:
+            jwkset.keys.pop(self.args.index)
+            jwkset.save(self.args.id, self.args.jku)
+
 
 if __name__ == '__main__':
     JwkCommand.dispatch(globals())

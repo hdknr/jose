@@ -42,6 +42,12 @@ class BaseCurveEnum(BaseEnum):
     def bits(self):
         return int(self.name[2:])
 
+    @classmethod
+    def from_bits(cls, bits):
+        if isinstance(bits, int):
+            return cls.create('P-%d' % bits)
+
+
 CurveEnum = type('Curve', (BaseCurveEnum,), CurveDict)
 
 

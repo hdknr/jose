@@ -43,10 +43,10 @@ class Command(ArgumentParser):
             try:
                 if issubclass(v, cls) and v != cls:
                     if v.Name == args.command:
-                        command = v()
+                        command = v
                         break
             except:
                 pass
 
         if command:
-            return command.run()
+            return command().run()

@@ -43,6 +43,10 @@ class Key(BaseKey):
     def init_material(self, length=200, **kwargs):
         self.material = Random.get_random_bytes(length)
 
+    @property
+    def length(self):
+        return len(self.shared_key)
+
     def to_jwk(self, jwk):
         jwk.k = _BE(self.material)
 
@@ -70,7 +74,7 @@ class Key(BaseKey):
 
     @property
     def public_jwk(self):
-        return self.private_jwk
+        return None
 
     @property
     def private_key(self):

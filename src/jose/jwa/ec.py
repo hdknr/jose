@@ -36,17 +36,23 @@ curve_parameter = lambda fields: dict(
 
 class Key(BaseKey):
 
-    def init_material(self, curve=CurveEnum.P_256, **kwargs):
+    def init_material(self, length=256, crv=CurveEnum.P_256, **kwargs):
         ''' generate new key material '''
-        if isinstance(curve, basestring):
-            curve = CurveEnum.create(curve)
-        if curve:
-            self.material = EccKey.generate(curve.bits)
+        length = length or crv.bits
+        self.material = EccKey.generate(length)
+
+    @property
+    def length(self):
+        if self.is_public:
+            return self.material._pub[0]
+        if self.is_private:
+            return self.material._priv[0]
+        return 0
 
     def to_jwk(self, jwk):
         key = self.public_key
         if key:
-            jwk.kty = KeyTypeEnum.EC,
+            jwk.kty = KeyTypeEnum.EC
             jwk.crv = CurveEnum.create("P-{:d}".format(key._pub[0]))
             jwk.x = base64.long_to_b64(key._pub[1][0])
             jwk.y = base64.long_to_b64(key._pub[1][1])

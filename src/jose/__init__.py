@@ -101,7 +101,10 @@ class BaseObject(object):
 
     @classmethod
     def load(cls, entity_id="me", id=None, *args, **kwargs):
-        return conf.store.load(cls, entity_id, id, *args, **kwargs)
+        try:
+            return conf.store.load(cls, entity_id, id, *args, **kwargs)
+        except:
+            return None
 
 
 class AlgorithmBaseEnum(BaseEnum):
@@ -120,7 +123,7 @@ class AlgorithmBaseEnum(BaseEnum):
 
 class BaseKey(object):
     def __init__(
-            self, kty, material=None, jwk=None,
+            self, kty, material=None, length=None, jwk=None,
             *args, **kwargs):
 
         assert any([material is None,
@@ -131,9 +134,9 @@ class BaseKey(object):
             if jwk:
                 self.from_jwk(jwk)
             else:
-                self.init_material(*args, **kwargs)
+                self.init_material(length=length, *args, **kwargs)
 
-    def init__material(self, *args, **kwargs):
+    def init__material(self, length,  *args, **kwargs):
         raise NotImplemented
 
     def to_jwk(self, jwk):

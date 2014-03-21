@@ -293,7 +293,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         key = KeyTypeEnum.EC.create_key()
 
         # new private key
-        key.init_material(curve=CurveEnum.P_256)
+        key.init_material(CurveEnum.P_256.bits)
         self.assertTrue(key.is_private)
         self.assertFalse(key.is_public)
         self.assertIsNotNone(key.material)

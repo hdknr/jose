@@ -12,11 +12,11 @@ class Configuration(object):
                 'jose.store.FileStore')
         )()
 
-    def generate_kid(self, kty, length=0, *args, **kwargs):
+    def generate_kid(self, kty, length, *args, **kwargs):
         '''
             :parma int length: field length(EC), bits(RSA), length(oct)
         '''
         return '-'.join([
             kty.name[0],
-            struct.pack('H', int(length)).encode('hex'),
+            struct.pack('H', length).encode('hex'),
             struct.pack('d', time.time()).encode('hex')])
