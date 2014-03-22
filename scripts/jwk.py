@@ -62,10 +62,12 @@ class JwkCommand(commands.Command):
 
         self.params = {}
         if hasattr(args, 'params'):
-            print "@@@@@@", args.params
             self.params = dict([
                 i.split('=') for i in args.params
                 if i.find('=') >= 0])
+            if self.params.get('kty', None):
+                self.params['kty'] = KeyTypeEnum.create(
+                    self.params['kty'])
 
         if args.kid:
             self.inits['kid'] = self.args.kid
@@ -109,6 +111,9 @@ class SelectCommand(JwkCommand):
 
         if self.params.get('index', None) is not None:
             print jwkset.keys[int(self.params['index'])].to_json(indent=2)
+        elif self.params != {}:
+            for key in jwkset.select_key(**self.params):
+                print key.to_json(indent=2)
         else:
             print jwkset.to_json(indent=2)
 
@@ -130,7 +135,24 @@ class DeleteCommand(JwkCommand):
             print removed.to_json(indent=2)
             return
 
+
+class ResetKidCommand(JwkCommand):
+    Name = 'resetkid'
+
+    def run(self, args):
+        super(ResetKidCommand, self).run(args)
+        jwkset = JwkSet.load(args.id, args.jku) or JwkSet()
+
+        for key in jwkset.select_key(kid=''):
+            index = jwkset.index_key(key)
+            key.set_kid()
+            assert key.kid
+            jwkset.keys[index] = key
+
+        jwkset.save(args.id, args.jku)
+
 if __name__ == '__main__':
     JwkCommand.dispatch([
-        CreateCommand, SelectCommand, DeleteCommand
+        CreateCommand, SelectCommand, DeleteCommand,
+        ResetKidCommand,
     ])

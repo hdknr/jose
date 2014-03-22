@@ -2,7 +2,7 @@ from jose import conf, BaseEnum, BaseObject
 from jose.jwa import keys        # , Algorithm
 from jose.utils import merged
 #
-import traceback
+#import traceback
 
 
 class UseEnum(BaseEnum):
@@ -60,6 +60,17 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
             self.key_ops = [KeyOpsEnum(**ops)
                             for ops in self.key_ops
                             if isinstance(ops, dict)]
+
+    def __eq__(self, other):
+        if isinstance(other, Jwk):
+            return self.key == other.key
+        return NotImplemented
+
+    def __ne__(self, other):
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return result
+        return not result
 
     @property
     def key(self):
@@ -163,6 +174,16 @@ class JwkSet(BaseObject):
         jwk = jwk or self.get(kty, kid)
         if jwk:
             self.keys = [key for key in self.keys if key != jwk]
+
+    def select_key(self, **kwargs):
+        return [
+            key for key in self.keys
+            if any([getattr(key, k, None) == v
+                    for k, v in kwargs.items()])
+        ]
+
+    def index_key(self, jwk):
+        return self.keys.index(jwk)
 
     @property
     def public_set(self):
