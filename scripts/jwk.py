@@ -1,6 +1,6 @@
 from jose import commands
 from jose.jwk import Jwk, JwkSet
-from jose.jwa.keys import CurveEnum, KeyTypeEnum
+from jose.jwa import keys
 #from jose import conf
 
 
@@ -12,10 +12,12 @@ class JwkCommand(commands.Command):
         parser.add_argument(
             '-c', '--curve', dest="curve",
             default='P-256',
+            choices=keys.CurveDict.values(),
             help="ECDSA Key Curve")
 
         parser.add_argument(
             '-b', '--bits', dest="bits", default=2048, type=int,
+            choices=[2048, 4096, ],
             help="RSA key bits")
 
         parser.add_argument(
@@ -50,14 +52,14 @@ class JwkCommand(commands.Command):
     def run(self, args):
         self.inits = {}
         if hasattr(args, 'kty'):
-            args.kty = KeyTypeEnum.create(args.kty)
+            args.kty = keys.KeyTypeEnum.create(args.kty)
             self.inits['kty'] = self.args.kty
 
-            if args.kty == KeyTypeEnum.RSA:
+            if args.kty == keys.KeyTypeEnum.RSA:
                 self.inits['length'] = args.bits
-            elif args.kty == KeyTypeEnum.EC:
-                self.inits['crv'] = CurveEnum.create(args.curve)
-            elif args.kty == KeyTypeEnum.OCT:
+            elif args.kty == keys.KeyTypeEnum.EC:
+                self.inits['crv'] = keys.CurveEnum.create(args.curve)
+            elif args.kty == keys.KeyTypeEnum.OCT:
                 self.inits['length'] = args.length
 
         self.params = {}
@@ -66,7 +68,7 @@ class JwkCommand(commands.Command):
                 i.split('=') for i in args.params
                 if i.find('=') >= 0])
             if self.params.get('kty', None):
-                self.params['kty'] = KeyTypeEnum.create(
+                self.params['kty'] = keys.KeyTypeEnum.create(
                     self.params['kty'])
 
         if args.kid:
@@ -77,7 +79,9 @@ class CreateCommand(JwkCommand):
     Name = 'create'
 
     def set_args(self, parser):
-        parser.add_argument('kty', help="KeyType")
+        parser.add_argument('kty',
+                            choices=keys.KeyTypeDict.values(),
+                            help="KeyType")
         parser.add_argument('params', nargs='*', help="jws-claim=value")
 
         parser.add_argument(

@@ -23,6 +23,36 @@ class JwsCommand(commands.Command):
             help="With no payload, read stdin or generate random.")
 
         parser.add_argument(
+            '-s', '--store', dest="store",
+            default=None, type=str,
+            help="Key Store path")
+
+    def run(self, args):
+        self.result = Result()
+
+        # Key Store
+        if args.store:
+            conf.store.base = os.path.abspath(args.store)
+
+        #Plaintext
+        if args.payload:
+            with open(args.payload) as infile:
+                self.result.plaintext = infile.read()
+        elif not sys.stdin.isatty():
+            self.result.plaintext = sys.stdin.read()
+        else:
+            self.result.plaintext = commands.random_text(32)
+
+
+class SampleCommand(JwsCommand):
+    Name = 'sample'
+
+    def set_args(self, parser):
+        parser.add_argument('alg',
+                            choices=sigs.SigDict.values(),
+                            help="|".join(sigs.SigDict.values()))
+        parser.add_argument('params', nargs='*', help="jws-claim=value")
+        parser.add_argument(
             '-c', '--curve', dest="curve",
             default='P-256',
             help="ECDSA Key Curve")
@@ -40,61 +70,45 @@ class JwsCommand(commands.Command):
             default=None,
             help="With no Jws file, create file")
 
-        parser.add_argument(
-            '-s', '--store', dest="store",
-            default=None, type=str,
-            help="Key Store path")
-
-
-class SampleCommand(JwsCommand):
-    Name = 'sample'
-
-    def set_args(self, parser):
-        parser.add_argument('alg', help="jws 'alg' claim")
-        parser.add_argument('params', nargs='*', help="jws-claim=value")
-
     def run(self, args):
-
-        if args.store:
-            conf.store.base = os.path.abspath(args.store)
-
-        sample = Result()
+        super(SampleCommand, self).run(args)
 
         #Jws
-        sample.jws = Jws(alg=sigs.SigEnum.create(args.alg.upper()))
+        self.result.jws = Jws(alg=sigs.SigEnum.create(args.alg))
+        print self.result.to_json(indent=2)
 
+        # any parms
         for param in args.params:
-            sample.jws.set_value(*param.split('='))
+            self.result.jws.set_value(*param.split('='))
 
-        #Plaintext
-        if args.payload:
-            with open(args.payload) as infile:
-                sample.plaintext = infile.read()
-        elif not sys.stdin.isatty():
-            sample.plaintext = sys.stdin.read()
-        else:
-            sample.plaintext = commands.random_text(32)
-
-        if sample.jws.alg.key_type == KeyTypeEnum.RSA:
-            sample.inits = dict(length=args.bits)
-        elif sample.jws.alg.key_type == KeyTypeEnum.EC:
-            sample.inits = dict(length=CurveEnum.create(args.curve).bits)
-        elif sample.jws.alg.key_type == KeyTypeEnum.OCT:
-            sample.inits = dict(length=args.length)
+        # Initia Value
+        if self.result.jws.alg.key_type == KeyTypeEnum.RSA:
+            self.result.inits = dict(length=args.bits)
+        elif self.result.jws.alg.key_type == KeyTypeEnum.EC:
+            self.result.inits = dict(length=CurveEnum.create(args.curve).bits)
+        elif self.result.jws.alg.key_type == KeyTypeEnum.OCT:
+            self.result.inits = dict(length=args.length)
 
         #key
         if args.jwk:
-            sample.jwk = Jwk.from_file(args.jwk)
+            self.result.jwk = Jwk.from_file(args.jwk)
         else:
-            sample.jwk = Jwk.generate(
-                kty=sample.jws.alg.key_type, **sample.inits)
+            self.result.jwk = Jwk.generate(
+                kty=self.result.jws.alg.key_type, **self.result.inits)
 
-        assert sample.jwk.kty == sample.jws.alg.key_type
+        assert self.result.jwk.kty == self.result.jws.alg.key_type
 
-        sample.signature = _BE(sample.jws.sign(sample.plaintext, sample.jwk))
-        sample.verified = sample.jws.verify(
-            sample.plaintext, _BD(sample.signature), sample.jwk)
-        print sample.to_json(indent=2)
+        self.result.signature = _BE(
+            self.result.jws.sign(self.result.plaintext, self.result.jwk))
+
+        self.result.verified = self.result.jws.verify(
+            self.result.plaintext, _BD(self.result.signature), self.result.jwk)
+
+        print self.result.to_json(indent=2)
+
+
+class MessageCommand(JwsCommand):
+    Name = 'message'
 
 
 if __name__ == '__main__':
