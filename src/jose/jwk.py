@@ -78,6 +78,10 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
             self._key = self.kty.create_key(jwk=self)
         return self._key
 
+    @property
+    def length(self):
+        return self.key.length
+
     def clone(self, public=False):
         try:
             if public:
@@ -175,11 +179,11 @@ class JwkSet(BaseObject):
         if jwk:
             self.keys = [key for key in self.keys if key != jwk]
 
-    def select_key(self, **kwargs):
+    def select_key(self, selector=any, **kwargs):
         return [
             key for key in self.keys
-            if any([getattr(key, k, None) == v
-                    for k, v in kwargs.items()])
+            if selector([getattr(key, k, None) == v
+                         for k, v in kwargs.items()])
         ]
 
     def index_key(self, jwk):

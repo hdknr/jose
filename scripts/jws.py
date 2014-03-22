@@ -3,8 +3,8 @@ import os
 from jose import commands
 from jose.jwa import sigs
 from jose.jws import Jws
-from jose.jwk import Jwk
-from jose.jwa.keys import CurveEnum, KeyTypeEnum
+from jose import jwk
+from jose.jwa import keys
 from jose import BaseObject, conf
 from jose.utils import _BE, _BD
 
@@ -15,8 +15,7 @@ class Result(BaseObject):
 
 class JwsCommand(commands.Command):
 
-    @classmethod
-    def set_global_args(self, parser):
+    def set_args(self, parser):
         parser.add_argument(
             '-p', '--payload', dest="payload",
             default=None,
@@ -26,6 +25,11 @@ class JwsCommand(commands.Command):
             '-s', '--store', dest="store",
             default=None, type=str,
             help="Key Store path")
+
+        parser.add_argument(
+            '-u', '--uri', dest="jku",
+            default=None, type=str,
+            help="Jku")
 
     def run(self, args):
         self.result = Result()
@@ -48,6 +52,8 @@ class SampleCommand(JwsCommand):
     Name = 'sample'
 
     def set_args(self, parser):
+        super(SampleCommand, self).set_args(parser)
+
         parser.add_argument('alg',
                             choices=sigs.SigDict.values(),
                             help="|".join(sigs.SigDict.values()))
@@ -82,18 +88,19 @@ class SampleCommand(JwsCommand):
             self.result.jws.set_value(*param.split('='))
 
         # Initia Value
-        if self.result.jws.alg.key_type == KeyTypeEnum.RSA:
+        if self.result.jws.alg.key_type == keys.KeyTypeEnum.RSA:
             self.result.inits = dict(length=args.bits)
-        elif self.result.jws.alg.key_type == KeyTypeEnum.EC:
-            self.result.inits = dict(length=CurveEnum.create(args.curve).bits)
-        elif self.result.jws.alg.key_type == KeyTypeEnum.OCT:
+        elif self.result.jws.alg.key_type == keys.KeyTypeEnum.EC:
+            self.result.inits = dict(
+                length=keys.CurveEnum.create(args.curve).bits)
+        elif self.result.jws.alg.key_type == keys.KeyTypeEnum.OCT:
             self.result.inits = dict(length=args.length)
 
         #key
         if args.jwk:
-            self.result.jwk = Jwk.from_file(args.jwk)
+            self.result.jwk = jwk.Jwk.from_file(args.jwk)
         else:
-            self.result.jwk = Jwk.generate(
+            self.result.jwk = jwk.Jwk.generate(
                 kty=self.result.jws.alg.key_type, **self.result.inits)
 
         assert self.result.jwk.kty == self.result.jws.alg.key_type
@@ -110,8 +117,37 @@ class SampleCommand(JwsCommand):
 class MessageCommand(JwsCommand):
     Name = 'message'
 
+    def set_args(self, parser):
+        super(MessageCommand, self).set_args(parser)
+        parser.add_argument('signer',
+                            type=str,
+                            default="https://foo.com",
+                            help="signer entity id")
+
+    def run(self, args):
+        super(MessageCommand, self).run(args)
+
+        key_params = [
+            {"kty": keys.KeyTypeEnum.EC, "length": 256, },
+            {"kty": keys.KeyTypeEnum.EC, "length": 384, },
+            {"kty": keys.KeyTypeEnum.EC, "length": 521, },
+            {"kty": keys.KeyTypeEnum.RSA, "length": 2048, },
+            {"kty": keys.KeyTypeEnum.OCT, "length": 100, },
+        ]
+        jwkset = jwk.JwkSet.load(args.signer, args.jku) or jwk.JwkSet()
+        for keyp in key_params:
+            key = jwkset.select_key(selector=all, **keyp)
+            key = key[0] if len(key) > 0 else None
+            if key is None:
+                key = jwk.Jwk.generate(**keyp)
+                print key.kty, key.length, key.to_json(indent=2)
+                jwkset.add_key(key)
+            keyp['jwk'] = key
+        jwkset.save(args.signer, args.jku)
+
 
 if __name__ == '__main__':
     JwsCommand.dispatch([
         SampleCommand,
+        MessageCommand,
     ])

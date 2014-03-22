@@ -2,13 +2,13 @@ from jose import commands
 from jose.jwk import Jwk, JwkSet
 from jose.jwa import keys
 #from jose import conf
+import ast
 
 
 class JwkCommand(commands.Command):
     Name = None
 
-    @classmethod
-    def set_global_args(cls, parser):
+    def set_args(self, parser):
         parser.add_argument(
             '-c', '--curve', dest="curve",
             default='P-256',
@@ -51,6 +51,9 @@ class JwkCommand(commands.Command):
 
     def run(self, args):
         self.inits = {}
+        if args.kid:
+            self.inits['kid'] = self.args.kid
+
         if hasattr(args, 'kty'):
             args.kty = keys.KeyTypeEnum.create(args.kty)
             self.inits['kty'] = self.args.kty
@@ -64,21 +67,24 @@ class JwkCommand(commands.Command):
 
         self.params = {}
         if hasattr(args, 'params'):
-            self.params = dict([
-                i.split('=') for i in args.params
-                if i.find('=') >= 0])
+            for i in args.params:
+                k, v = i.split('=')
+                try:
+                    self.params[k] = ast.literal_eval(v)
+                except:
+                    self.params[k] = v
+
             if self.params.get('kty', None):
                 self.params['kty'] = keys.KeyTypeEnum.create(
                     self.params['kty'])
-
-        if args.kid:
-            self.inits['kid'] = self.args.kid
 
 
 class CreateCommand(JwkCommand):
     Name = 'create'
 
     def set_args(self, parser):
+        super(CreateCommand, self).set_args(parser)
+
         parser.add_argument('kty',
                             choices=keys.KeyTypeDict.values(),
                             help="KeyType")
@@ -99,11 +105,16 @@ class SelectCommand(JwkCommand):
     Name = 'select'
 
     def set_args(self, parser):
+        super(SelectCommand, self).set_args(parser)
         parser.add_argument('params', nargs='*',
                             help="jws-claim=value")
         parser.add_argument(
             '-p', '--public', dest="public", action="store_true",
             help="List Public Set")
+
+        parser.add_argument(
+            '-a', '--all', dest="all", action="store_true",
+            help="all")
 
     def run(self, args):
         super(SelectCommand, self).run(args)
@@ -113,19 +124,24 @@ class SelectCommand(JwkCommand):
         if args.public:
             jwkset = jwkset.public_set
 
+        keys = []
         if self.params.get('index', None) is not None:
-            print jwkset.keys[int(self.params['index'])].to_json(indent=2)
+            keys = [jwkset.keys[int(self.params['index'])]]
         elif self.params != {}:
-            for key in jwkset.select_key(**self.params):
-                print key.to_json(indent=2)
+            keys = jwkset.select_key(selector=args.all and all or any,
+                                     **self.params)
         else:
-            print jwkset.to_json(indent=2)
+            keys = jwkset.keys
+
+        for key in keys:
+            print key.to_json(indent=2)
 
 
 class DeleteCommand(JwkCommand):
     Name = 'delete'
 
     def set_args(self, parser):
+        super(DeleteCommand, self).set_args(parser)
         parser.add_argument('index', help="KeyType", nargs='?',
                             default=None, type=int)
 
@@ -142,6 +158,9 @@ class DeleteCommand(JwkCommand):
 
 class ResetKidCommand(JwkCommand):
     Name = 'resetkid'
+
+    def set_args(self, parser):
+        super(ResetKidCommand, self).set_args(parser)
 
     def run(self, args):
         super(ResetKidCommand, self).run(args)

@@ -24,10 +24,10 @@ class FileStore(BaseStore):
 
         uri = uri or 'default'
         key = "%s/%s.%s.%s.json" % (
-            urllib.quote(entity_id),
+            urllib.quote_plus(entity_id),
             obj_class.__module__,
             obj_class.__name__,
-            urllib.quote(uri),
+            urllib.quote_plus(uri),
         )
         path = os.path.join(self.base, key)
         if not os.path.isdir(os.path.dirname(path)):

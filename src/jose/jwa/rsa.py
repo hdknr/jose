@@ -38,7 +38,7 @@ class Key(BaseKey):
 
     @property
     def length(self):
-        return len(_BD(_LBE(self.material.n)))
+        return len(_BD(_LBE(self.material.n))) * 8
 
     def to_jwk(self, jwk):
         jwk.kty = keys.KeyTypeEnum.RSA
