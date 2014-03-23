@@ -106,9 +106,16 @@ class Signature(BaseObject):
     def sign(self, b64_payload, jwk):
         #: TODO: load key from store if signing_jwk  is None
         #: only self._protected is used for Jwk parameter
+
+        jws = self.to_jws()
+        if not jws.kid:
+            if jwk.kid:
+                self.header.kid = jwk.kid
+        else:
+            assert jws.kid == jwk.kid
+
         self.render_protected()
         s_input = self.signing_input(b64_payload)
-        jws = self.to_jws()
 
         self.signature = base64.base64url_encode(
             jws.sign(s_input, jwk))

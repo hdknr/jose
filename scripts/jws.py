@@ -206,7 +206,7 @@ class ParseCommand(JwsCommand):
             print "no message file or stdin"
             return
 
-        msg = jws.Message.from_token(args.message, sender=self.sender)
+        msg = jws.Message.from_token(args.message, sender=args.sender)
         if not msg:
             try:
                 msg = jws.Jws.from_json(args.message)
