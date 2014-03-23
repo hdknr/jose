@@ -32,7 +32,7 @@ class Crypto(BaseObject):
         # `jku` MUST include both parties identity.
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
         keyset = JwkSet.load(owner, self.jku)
-        return keyset.get(self.kty, self.kid)
+        return keyset.get_key(self.alg.key_type, self.kid)
 
     def merge(self, crypto):
         res = copy.deepcopy(self)
@@ -48,10 +48,10 @@ class Crypto(BaseObject):
 
 
 class CryptoMessage(BaseObject):
-    def __init__(self, _sender=None, _receiver=None, *args, **kwargs):
+    def __init__(self, sender=None, receiver=None, *args, **kwargs):
         super(CryptoMessage, self).__init__(*args, **kwargs)
-        self._sender = _sender
-        self._receiver = _receiver
+        self._sender = sender
+        self._receiver = receiver
 
     @property
     def sender(self):

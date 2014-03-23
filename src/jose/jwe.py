@@ -314,6 +314,7 @@ class Message(CryptoMessage):
         except ValueError:
             #: fall to  compact serialization
             pass
+
         except Exception, e:
             print ">>>>>>", type(e)
             print traceback.format_exc()
@@ -324,6 +325,7 @@ class Message(CryptoMessage):
             message.sender = sender
             message.receiver = receiver
             return message
+
         except Exception, e:
             print ">>>>>>", type(e)
             print traceback.format_exc()

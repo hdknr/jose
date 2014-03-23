@@ -39,6 +39,7 @@ class SigAlgorithmEnum(AlgorithmBaseEnum):
     def key_type(self):
         return dict(
             H=keys.KeyTypeEnum.OCT,
+            N=keys.KeyTypeEnum.OCT,
             R=keys.KeyTypeEnum.RSA,
             P=keys.KeyTypeEnum.RSA,
             E=keys.KeyTypeEnum.EC,)[self.name[0]]

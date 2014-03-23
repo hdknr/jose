@@ -1,12 +1,9 @@
 import sys
 import os
-from jose import commands
-from jose.jwa import sigs
-from jose.jws import Jws
-from jose import jwk
-from jose.jwa import keys
-from jose import BaseObject, conf
+from jose import jws, jwk, commands, BaseObject, conf
+from jose.jwa import keys, sigs
 from jose.utils import _BE, _BD
+import traceback
 
 
 class Result(BaseObject):
@@ -16,10 +13,6 @@ class Result(BaseObject):
 class JwsCommand(commands.Command):
 
     def set_args(self, parser):
-        parser.add_argument(
-            '-p', '--payload', dest="payload",
-            default=None,
-            help="With no payload, read stdin or generate random.")
 
         parser.add_argument(
             '-s', '--store', dest="store",
@@ -38,14 +31,27 @@ class JwsCommand(commands.Command):
         if args.store:
             conf.store.base = os.path.abspath(args.store)
 
+        #: stdin
+        if not sys.stdin.isatty():
+            args.stdin = sys.stdin.read().rstrip('\n')
+
         #Plaintext
-        if args.payload:
+        if getattr(args, 'payload', None):
             with open(args.payload) as infile:
-                self.result.plaintext = infile.read()
+                args.payload = infile.read()
         elif not sys.stdin.isatty():
-            self.result.plaintext = sys.stdin.read()
+            args.payload = args.stdin.replace('\n', '')
         else:
-            self.result.plaintext = commands.random_text(32)
+            args.payload = commands.random_text(32)
+
+        # Message/Token
+        if getattr(args, 'message', None):
+            with open(args.message) as infile:
+                args.message = infile.read()
+        elif not sys.stdin.isatty():
+            args.message = args.stdin.replace('\n', '')
+
+        self.result.plaintext = args.payload
 
 
 class SampleCommand(JwsCommand):
@@ -58,6 +64,12 @@ class SampleCommand(JwsCommand):
                             choices=sigs.SigDict.values(),
                             help="|".join(sigs.SigDict.values()))
         parser.add_argument('params', nargs='*', help="jws-claim=value")
+
+        parser.add_argument(
+            '-p', '--payload', dest="payload",
+            default=None,
+            help="With no payload, read stdin or generate random.")
+
         parser.add_argument(
             '-c', '--curve', dest="curve",
             default='P-256',
@@ -80,7 +92,7 @@ class SampleCommand(JwsCommand):
         super(SampleCommand, self).run(args)
 
         #Jws
-        self.result.jws = Jws(alg=sigs.SigEnum.create(args.alg))
+        self.result.jws = jws.Jws(alg=sigs.SigEnum.create(args.alg))
         print self.result.to_json(indent=2)
 
         # any parms
@@ -119,14 +131,17 @@ class MessageCommand(JwsCommand):
 
     def set_args(self, parser):
         super(MessageCommand, self).set_args(parser)
-        parser.add_argument('signer',
+        parser.add_argument('sender',
                             type=str,
                             default="https://foo.com",
-                            help="signer entity id")
+                            help="sender entity id")
 
-    def run(self, args):
-        super(MessageCommand, self).run(args)
+        parser.add_argument(
+            '-p', '--payload', dest="payload",
+            default=None,
+            help="With no payload, read stdin or generate random.")
 
+    def provide_keys(self, sender, jku):
         key_params = [
             {"kty": keys.KeyTypeEnum.EC, "length": 256, },
             {"kty": keys.KeyTypeEnum.EC, "length": 384, },
@@ -134,7 +149,7 @@ class MessageCommand(JwsCommand):
             {"kty": keys.KeyTypeEnum.RSA, "length": 2048, },
             {"kty": keys.KeyTypeEnum.OCT, "length": 100, },
         ]
-        jwkset = jwk.JwkSet.load(args.signer, args.jku) or jwk.JwkSet()
+        jwkset = jwk.JwkSet.load(sender, jku) or jwk.JwkSet()
         for keyp in key_params:
             key = jwkset.select_key(selector=all, **keyp)
             key = key[0] if len(key) > 0 else None
@@ -143,11 +158,69 @@ class MessageCommand(JwsCommand):
                 print key.kty, key.length, key.to_json(indent=2)
                 jwkset.add_key(key)
             keyp['jwk'] = key
-        jwkset.save(args.signer, args.jku)
+            keyp['jku'] = jku
 
+        jwkset.save(sender, jku)
+        return key_params
+
+    def run(self, args):
+        super(MessageCommand, self).run(args)
+
+        args.jku = args.jku or args.sender + "/jwkset"
+
+        self.provide_keys(args.sender, args.jku)
+
+        message = jws.Message(
+            sender=args.sender, payload=_BE(args.payload))
+
+        for alg in sigs.SigDict.values():
+            protected = jws.Jws(alg=sigs.SigEnum.create(alg))
+            header = jws.Jws(jku=args.jku)
+            message.add_signature(protected, header)
+
+        jmsg = message.to_json(indent=2)
+
+        print jmsg
+        msg2 = jws.Message.from_json(jmsg)
+        msg2 = jws.Message.from_token(jmsg, sender=args.sender)
+        print msg2.verify()
+
+
+class ParseCommand(JwsCommand):
+    Name = 'parse'
+
+    def set_args(self, parser):
+        super(ParseCommand, self).set_args(parser)
+        parser.add_argument('message', type=str, default=None, nargs='?',
+                            help="message file")
+
+        parser.add_argument('-S', '--Sender',
+                            type=str,
+                            dest='sender',
+                            default="https://foo.com",
+                            help="signer entity id")
+
+    def run(self, args):
+        super(ParseCommand, self).run(args)
+        if not getattr(args, 'message', None):
+            print "no message file or stdin"
+            return
+
+        msg = jws.Message.from_token(args.message, sender=self.sender)
+        if not msg:
+            try:
+                msg = jws.Jws.from_json(args.message)
+            except:
+                try:
+                    msg = jws.Jws.from_base64(args.message)
+                except:
+                    pass
+
+        print msg and msg.to_json(indent=2)
 
 if __name__ == '__main__':
     JwsCommand.dispatch([
         SampleCommand,
         MessageCommand,
+        ParseCommand,
     ])

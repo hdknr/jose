@@ -33,7 +33,7 @@ class Jws(Crypto):
         #: TODO: load key from store if signing_jwk  is None
         assert jwk
         assert signing_input
-        assert signature
+        assert self.alg == SigEnum.NONE or signature is not None
 
         signer = self.alg.signer
         return signer.verify(jwk, signing_input, signature)
@@ -73,7 +73,8 @@ class Signature(BaseObject):
 
         if isinstance(self.header, dict):
             #: this case is for creating a new token.
-            self.header = Jws(**dict)
+            self.header = Jws(**self.header)
+
         elif isinstance(self.header, str):
             #: this case if for veryfing a given token.
             _json = base64.base64url_decode(self.header)
@@ -120,7 +121,7 @@ class Signature(BaseObject):
             self.protected = base64.base64url_encode(
                 self._protected.to_json())
 
-    def load_load(self, owner):
+    def load_key(self, owner):
         jws = self.to_jws()
         return jws.load_key(owner)
 
@@ -145,8 +146,9 @@ class Message(CryptoMessage):
     def add_signature(self, protected=None, header=None):
         signature = Signature(
             protected=protected, header=header)
-        signature.sign(self.payload)
-        self.append(signature)
+        jwk = signature.load_key(self.sender)
+        signature.sign(self.payload, jwk)
+        self.signatures.append(signature)
 
     @classmethod
     def from_token(cls, token, sender=None, receiver=None):
@@ -190,7 +192,7 @@ class Message(CryptoMessage):
 
         ret = True
         for sig in self.signatures:
-            jwk = sig.load_key(self.sender).public_jwk
+            jwk = sig.load_key(self.sender)
             ret = ret and sig.verify(self.payload, jwk)
         return ret
 
