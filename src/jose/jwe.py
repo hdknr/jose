@@ -233,7 +233,7 @@ class Message(CryptoMessage):
         ''' before call, recipient has to be provided _iv and _cek
         '''
         #: Find key for encrypt CEK
-        jwk = recipient.load_key(receiver).public_jwk
+        jwk = recipient.load_key(receiver)
 
         #: Provide CEK & IV
         (self.cek, self.iv) = recipient.provide_key(

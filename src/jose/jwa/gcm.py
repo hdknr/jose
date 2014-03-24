@@ -1,7 +1,7 @@
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 from aes_gcm import AES_GCM, InvalidTagException
 from jose import BaseContentEncryptor, BaseKeyEncryptor
-from jose.utils import base64
+from jose.utils import base64, _BE, _BD
 
 
 # Content Encryption
@@ -58,23 +58,25 @@ class GcmKeyEncryptor(BaseKeyEncryptor):
 
     @classmethod
     def provide(cls, enc, jwk, jwe, *args, **kwargs):
-        key = jwk.key.shared_key[:cls._enc._KEY_LEN]
-        cek, iv = cls._enc.create_key_iv()
-        cek_ci, tag = cls._enc.encrypt(key, cek, iv, "")
+        kek = jwk.key.shared_key[:cls._enc._KEY_LEN]
+        dmy, kek_iv = cls._enc.create_key_iv()      #: iv
 
-        jwe.iv = base64.base64url_encode(iv)
-        jwe.tag = base64.base64url_encode(tag)
+        cek, iv = enc.encryptor.create_key_iv()
+        cek_ci, tag = cls._enc.encrypt(kek, cek, kek_iv, "")
 
-        return (cek, iv, cek_ci, key)
+        jwe.iv = _BE(kek_iv)
+        jwe.tag = _BE(tag)
+
+        return (cek, iv, cek_ci, kek)
 
     @classmethod
     def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
-        key = jwk.key.shared_key[:cls._enc._KEY_LEN]
+        kek = jwk.key.shared_key[:cls._enc._KEY_LEN]
         assert isinstance(jwe.iv, basestring)
         assert isinstance(jwe.tag, basestring)
-        _iv = base64.base64url_decode(jwe.iv)
-        _tag = base64.base64url_decode(jwe.tag)
-        cek, isv = cls._enc.decrypt(key, cek_ci, _iv, "", _tag)
+        _iv = _BD(jwe.iv)
+        _tag = _BD(jwe.tag)
+        cek, isv = cls._enc.decrypt(kek, cek_ci, _iv, "", _tag)
         return cek
 
 

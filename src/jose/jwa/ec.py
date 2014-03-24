@@ -255,24 +255,22 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
     _KEY_WRAP = None
 
     @classmethod
-    def digest_key_bitlength(cls, jwe):
+    def digest_key_bitlength(cls, enc):
         if cls._KEY_WRAP:
             return 8 * cls._KEY_WRAP.key_length()
         else:
-            return 8 * jwe.enc.encryptor.key_length()
+            return 8 * enc.encryptor.key_length()
 
     @classmethod
-    def other_info(cls, jwe):
-        klen = cls.digest_key_bitlength(jwe)
+    def other_info(cls, algid, apu, apv,  klen):
         #: AlgorithmID : enc(ECDH-ES), alg(ECDH-AnnnKW)
-        algid = jwe.alg.value if cls._KEY_WRAP else jwe.enc.value
-        return other_info(algid, jwe.apu, jwe.apv, klen)
+        return other_info(algid, apu, apv, klen)
 
     @classmethod
-    def create_key(cls, jwe, agr, cek=None):
-        oi = cls.other_info(jwe)
-        klen = cls.digest_key_bitlength(jwe)
-        dkey = ConcatKDF(agr, klen, oi)
+    def create_key(cls, agr, klen, other_info, cek=None):
+
+        dkey = ConcatKDF(agr, klen, other_info)
+
         if cls._KEY_WRAP and cek:
             cek_ci = cls._KEY_WRAP.kek_encrypt(dkey, cek)
             return (dkey, cek_ci)
@@ -293,21 +291,29 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
         else:
             cek, iv = enc.encryptor.create_key_iv()
 
+        #: parmeters for ECDH
         epk = Jwk.generate(kty=KeyTypeEnum.EC)
         agr = epk.key.agreement_to(jwk.key)
-        key, cek_ci = cls.create_key(jwe, agr, cek)
+        klen = cls.digest_key_bitlength(enc)
+        algid = jwe.alg.value if cls._KEY_WRAP else enc.value
+        other_info = cls.other_info(algid, jwe.apu, jwe.apv, klen)
+
+        #: create or derived key
+        key, cek_ci = cls.create_key(agr, klen, other_info, cek)
         cek = cek if cls._KEY_WRAP else key
+
         jwe.epk = epk.public_jwk
+
         return (cek, iv, cek_ci, key)
 
     @classmethod
     def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
-        if cls._KEY_WRAP is None and not cek_ci:
-            # ECDH_ES: cek must be None
-            return None
+        agr = jwk.key.agreement_to(jwe.epk.key)  #: epk.key == public
+        klen = cls.digest_key_bitlength(enc)
+        algid = jwe.alg.value if cls._KEY_WRAP else enc.value
+        other_info = cls.other_info(algid, jwe.apu, jwe.apv, klen)
 
-        agr = jwk.key.agreement_to(jwe.epk.key)
-        key, _dmy = cls.create_key(jwe, agr, None)
+        key, _dmy = cls.create_key(agr, klen, other_info)
         if cls._KEY_WRAP:
             return cls._KEY_WRAP.kek_decrypt(key, cek_ci)
         else:

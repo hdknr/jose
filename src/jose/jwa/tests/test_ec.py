@@ -253,7 +253,11 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
 
         jwe = Jwe(enc='A128GCM',
                   apu='Alice', apv='Bob')
-        oi_u = ECDH_ES.other_info(jwe)
+
+        algid = jwe.enc.value
+        klen = ECDH_ES.digest_key_bitlength(jwe.enc)
+
+        oi_u = ECDH_ES.other_info(algid, b'Alice', b'Bob', klen)
         oi_jwa = [
             0, 0, 0, 7,
             65, 49, 50, 56, 71, 67, 77,
@@ -265,14 +269,16 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
 
         self.assertEqual([ord(i) for i in oi_u], oi_jwa)
 
+
         #: Derive Key for ECDH Agreement
-        _derived_key_u, cek_ci_u = ECDH_ES.create_key(jwe, Zu)
+        _derived_key_u, cek_ci_u = ECDH_ES.create_key(Zu, klen, oi_u, None)
+
         self.assertIsNone(cek_ci_u)
 
         # --- Party V
         # Agreement
         Zv = v_stc_jwk.key.agreement_to(u_epk_jwk.key)
-        _derived_key_v, cek_ci_v = ECDH_ES.create_key(jwe, Zv)
+        _derived_key_v, cek_ci_v = ECDH_ES.create_key(Zv, klen, oi_u, None)
         self.assertIsNone(cek_ci_v)
 
         self.assertEqual(_derived_key_u, _derived_key_v)

@@ -5,6 +5,7 @@ import unittest
 from jose.jwk import Jwk
 from jose.jwe import Jwe, ZipEnum, Message, Recipient
 from jose.jwa.encs import KeyEncEnum, EncEnum
+from jose.jwa.keys import KeyTypeEnum
 from jose.utils import base64
 import traceback
 
@@ -164,7 +165,140 @@ class TestJweMessage(unittest.TestCase):
         self.assertEqual(header3.zip, ZipEnum.DEF)
         self.assertEqual(header3.alg, KeyEncEnum.A192KW)
 
-    def test_multi_recipients(self):
+    def _alg_enc_test(self, alg, enc, receiver, jku, plaintext):
+
+        #: Message
+        message = Message(
+            protected=Jwe(enc=enc, zip="DEF",),
+            unprotected=Jwe(typ="text"),
+            plaintext=_BE(plaintext)
+        )
+
+        recipient = Recipient(
+            header=Jwe(alg=alg, jku=jku,)
+        )
+        message.add_recipient(recipient, receiver)
+
+        json_message = message.to_json(indent=2)
+
+        print json_message
+
+        message2 = Message.from_token(
+            json_message, sender=None, receiver=receiver)
+
+        self.assertEqual(
+            len(message.recipients), len(message2.recipients))
+
+        self.assertEqual(_BD(message2.plaintext), plaintext)
+
+        return message
+
+    def _create_jwk(self, owner, jku, alg):
+        jwk = Jwk.get_or_create_from(
+            owner, jku, alg.key_type, kid=None)
+        return jwk
+
+    def test_message_rsakw(self):
+        receiver = "http://test.rsa.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [KeyEncEnum.RSA1_5, KeyEncEnum.RSA_OAEP]:
+            self.assertEqual(
+                self._create_jwk(receiver, jku, alg).kty,
+                KeyTypeEnum.RSA)
+
+            for enc in EncEnum.all():
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
+    def test_message_aeskw(self):
+        receiver = "http://test.aes.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [KeyEncEnum.A128KW, KeyEncEnum.A192KW, KeyEncEnum.A256KW]:
+            for enc in EncEnum.all():
+                jwk = self._create_jwk(receiver, jku, alg)
+                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
+    def test_message_gcmkw(self):
+        receiver = "http://test.gcm.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [
+            KeyEncEnum.GCMA128KW,
+            KeyEncEnum.GCMA192KW,
+            KeyEncEnum.GCMA256KW
+        ]:
+            for enc in EncEnum.all():
+                jwk = self._create_jwk(receiver, jku, alg)
+                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
+    def test_message_pbes2kw(self):
+        receiver = "http://test.pbes2.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [
+            KeyEncEnum.PBES2_HS256_A128KW,
+            KeyEncEnum.PBES2_HS384_A192KW,
+            KeyEncEnum.PBES2_HS512_A256KW,
+        ]:
+            for enc in EncEnum.all():
+                jwk = self._create_jwk(receiver, jku, alg)
+                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
+    def test_message_ecdhkw(self):
+        receiver = "http://test.ecdh.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [
+            KeyEncEnum.ECDH_ES_A128KW,
+            KeyEncEnum.ECDH_ES_A192KW,
+            KeyEncEnum.ECDH_ES_A256KW,
+        ]:
+            for enc in EncEnum.all():
+                jwk = self._create_jwk(receiver, jku, alg)
+                self.assertEqual(jwk.kty, KeyTypeEnum.EC)
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
+    def test_message_ecdhdir(self):
+        receiver = "http://test.ecdh.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [
+            KeyEncEnum.ECDH_ES,
+        ]:
+            for enc in EncEnum.all():
+                jwk = self._create_jwk(receiver, jku, alg)
+                self.assertEqual(jwk.kty, KeyTypeEnum.EC)
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
+    def test_multi(self):
 
         payload = "Everybody wants to rule the world."
 
