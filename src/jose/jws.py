@@ -1,6 +1,6 @@
 from crypto import Crypto, CryptoMessage
 from jose import BaseObject
-from jose.utils import base64
+from jose.utils import base64, _BE, _BD
 from jose.jwa.sigs import SigEnum
 import re
 import traceback
@@ -22,7 +22,7 @@ class Jws(Crypto):
         if isinstance(self.alg, basestring):
             self.alg = SigEnum.create(self.alg)
 
-    def sign(self, signing_input, jwk=None):
+    def sign(self, signing_input, jwk):
         #: TODO: load key from store if signing_jwk  is None
         assert jwk is not None
         signer = self.alg.signer
@@ -40,7 +40,7 @@ class Jws(Crypto):
 
     def create_message(self, payload):
         msg = Message(
-            payload=base64.base64url_encode(payload),
+            payload=_BE(payload),
             signatures=[Signature(protected=self)],
         )
         return msg
@@ -65,8 +65,7 @@ class Signature(BaseObject):
         if self.protected:
             if isinstance(self.protected, basestring):
                 #: this case if for veryfing a given token.
-                self._protected = Jws.from_json(
-                    base64.base64url_decode(self.protected))
+                self._protected = Jws.from_json(_BD(self.protected))
             elif isinstance(self.protected, Jws):
                 #: this case is for creating a new token.
                 self._protected = self.protected
@@ -99,9 +98,7 @@ class Signature(BaseObject):
     def verify(self, b64_payload, jwk=None):
         s_input = self.signing_input(b64_payload)
         jws = self.to_jws()
-        return jws.verify(s_input,
-                          base64.base64url_decode(self.signature),
-                          jwk)
+        return jws.verify(s_input, _BD(self.signature), jwk)
 
     def sign(self, b64_payload, jwk):
         #: TODO: load key from store if signing_jwk  is None
