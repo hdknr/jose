@@ -41,8 +41,11 @@ class KeyEncEnumBase(AlgorithmBaseEnum):
         import pbes2
         import gcm
         import aes
+        import misc
         return getattr(
-            dict(R=rsa, E=ec, A=aes, P=pbes2, G=gcm)[self.name[0]],
+            dict(R=rsa, E=ec, A=aes,
+                 P=pbes2, G=gcm,
+                 D=misc,)[self.name[0]],
             self.name)
 
     @property

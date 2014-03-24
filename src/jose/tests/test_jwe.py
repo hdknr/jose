@@ -298,6 +298,22 @@ class TestJweMessage(unittest.TestCase):
                 print msg.to_json(indent=2)
                 print Jwe.from_b64u(msg.protected).to_json(indent=2)
 
+    def test_message_dir(self):
+        receiver = "http://test.dir.com"
+        plaintext = "Everybody wants to rule the world."
+        jku = receiver + '/jwkset'
+
+        for alg in [
+            KeyEncEnum.DIR,
+        ]:
+            for enc in EncEnum.all():
+                jwk = self._create_jwk(receiver, jku, alg)
+                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
+                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
+
+                print msg.to_json(indent=2)
+                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+
     def test_multi(self):
 
         payload = "Everybody wants to rule the world."
