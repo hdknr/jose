@@ -41,6 +41,7 @@ from Crypto import Random
 class Key(BaseKey):
 
     def init_material(self, length=200, **kwargs):
+        length = length or 200
         self.material = Random.get_random_bytes(length)
 
     @property

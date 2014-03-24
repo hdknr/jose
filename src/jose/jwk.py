@@ -139,9 +139,18 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
         jwkset.save(owner, jku)
 
     @classmethod
-    def get_form(self, owner, jku):
-        (JwkSet.load(owner, jku) or JwkSet()
-         ).get_key(self.kty, self.kid)
+    def get_from(cls, owner, jku, kty, kid=None, **kwargs):
+        return (JwkSet.load(owner, jku) or JwkSet()
+                ).get_key(kty, kid, **kwargs)
+
+    @classmethod
+    def get_or_create_from(cls, owner, jku, kty, kid=None, **kwargs):
+        key = cls.get_from(owner, jku, kty, kid, **kwargs)
+        if key:
+            return key
+        key = cls.generate(kty=kty, **kwargs)
+        key.add_to(owner, jku)
+        return key
 
 
 class JwkSet(BaseObject):

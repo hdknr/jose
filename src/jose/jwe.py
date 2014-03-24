@@ -1,7 +1,8 @@
 from crypto import Crypto, CryptoMessage
 from jose.jwa.encs import EncEnum, KeyEncEnum
 from jose import BaseEnum, BaseObject
-from jose.utils import merged, _BD
+from jose.jwk import Jwk
+from jose.utils import merged, _BD, _BE
 import re
 import traceback
 import zlib
@@ -105,17 +106,24 @@ class Recipient(BaseObject):
 
         # Jwe
         if isinstance(self.header, basestring):
-            self.header = Jwe.from_base64(self.header)
+            self.header = Jwe.from_b64u(self.header)
         elif isinstance(self.header, dict):
             self.header = Jwe(**self.header)
 
         self._cek, self._iv = None, None
 
     def provide_key(self, jwk, cek=None, iv=None, jwe=None):
-        assert jwk.is_public, "providing jwk must be public."
         jwe = jwe and jwe.merge(self.header) or self.header
-        (self.cek, self.iv, self.encrypted_key
-         ) = jwe.alg.encryptor.provide(self.header, jwk, cek, iv)
+
+        assert jwk and isinstance(jwk, Jwk), "Recipient's Jwk must specifile"
+        assert jwe
+        assert jwe.enc
+        assert jwe.alg
+
+        (self.cek, self.iv, self.encrypted_key, kek
+         ) = jwe.alg.encryptor.provide(jwk, jwe, cek, iv)
+        self.encrypted_key = _BE(self.encrypted_key)
+
         return self.cek, self.iv
 
     def agree_key(self, jwk, jwe=None):
@@ -123,7 +131,7 @@ class Recipient(BaseObject):
         jwe = jwe and jwe.merge(self.header) or self.header
 
         self.cek = jwe.alg.encryptor.agree(
-            self.header, self.encrypted_key, jwk)
+            jwk, self.header, self.encrypted_key)
         return self.cek
 
     def load_key(self, receiver, jwe=None):
@@ -165,9 +173,9 @@ class Message(CryptoMessage):
         recipients=[],      # array of Recipient
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, plaintext=None, *args, **kwargs):
         self._protected = Jwe()  # `protected` cache as Jwe object
-        self._plaintext = None
+        self._plaintext = plaintext
         self._cek = None
 
         super(Message, self).__init__(*args, **kwargs)
@@ -176,12 +184,13 @@ class Message(CryptoMessage):
                                   self.recipients)
 
         if isinstance(self.protected, basestring):
-            self._protected = Jwe.from_base64(self.protected)
+            self._protected = Jwe.from_b64u(self.protected)
             if isinstance(self.protected, unicode):
                 self.protected = self.protected.encode('utf8')
+
         elif isinstance(self.protected, Jwe):
             self._protected = self.protected
-            self.protected = self._protected.to_base64url()
+            self.protected = self._protected.to_b64u()
 
         if isinstance(self.unprotected, dict):
             self.unprotected = Jwe(**self.unprotected)
@@ -218,11 +227,16 @@ class Message(CryptoMessage):
         jwk = recipient.load_key(receiver).public_jwk
 
         #: Provide CEK & IV
-        (self.cek, self.iv) = recipient.provide_key(jwk)
+        (self.cek, self.iv) = recipient.provide_key(
+            jwk, jwe=self.header())
+        self.iv = _BE(self.iv)
 
         #: Content encryption
         (self.ciphertext,
          self.tag) = self.encrypt()
+
+        self.ciphertext = _BE(self.ciphertext)
+        self.tag = _BE(self.tag)
 
         self.recipients = []      # reset recipient
         self.recipients.append(recipient)
@@ -233,10 +247,10 @@ class Message(CryptoMessage):
         assert self.auth_data
 
         header = self.header()           # Two Jwe headered are merged.
-        plaint = self.compress(self.plaintext)   # 'zip' compression
+        plaint = self.zip(self.plaintext)   # 'zip' compression
         return header.enc.encryptor.encrypt(
             self.cek, plaint,
-            _BD(self.iv, self.auth_data))
+            _BD(self.iv), self.auth_data)
 
     def decrypt(self):
         header = self.header()           # Two Jwe headered are merged.
@@ -254,9 +268,14 @@ class Message(CryptoMessage):
         ''' before call, recipient has to be provided with
             messsage's CEK and IV
         '''
+        if len(self.recipients) < 1:
+            self.create_ciphertext(recipient, receiver)
+            return
+
         # use existent cek and iv
         header = self.header()
-        recipient.provide(receiver, self.cek, self.iv, jwe=header)
+        key = recipient.load_key(receiver, header)
+        recipient.provide_key(key, self.cek, self.iv, jwe=header)
         self.recipients.append(recipient)
 
     def find_cek(self, me=None):

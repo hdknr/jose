@@ -289,7 +289,7 @@ class TestJws(unittest.TestCase):
         jwk = Jwk(**jwk_dict)
         sig_b64 = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
-        jws = Jws.from_base64(jws_b64)
+        jws = Jws.from_b64u(jws_b64)
         sig = jws.alg.signer.sign(jwk, sinput)
         self.assertEqual(sig_b64, base64.base64url_encode(sig))
 
@@ -307,7 +307,7 @@ class TestJws(unittest.TestCase):
             'EHwJjyqOgzDO7iKvU8vcnwNrmxYbSW9ERBXukOXolLzeO_Jn',
         ])
 
-        jws = Jws.from_base64(header_b64)
+        jws = Jws.from_b64u(header_b64)
         self.assertIsNotNone(jws)
         self.assertEqual(jws.alg, SigEnum.ES512)
 

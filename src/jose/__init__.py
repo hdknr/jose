@@ -71,9 +71,9 @@ class BaseObject(object):
         kwargs['cls'] = self._serializer    #: Custom Serializer
         return json.dumps(self, *args, **kwargs)
 
-    def to_base64url(self, *args, **kwargs):
+    def to_b64u(self, *args, **kwargs):
         return base64.base64url_encode(
-            json.dumps(self, *args, **kwargs))
+            self.to_json(*args, **kwargs))
 
     def to_dict(self, *args, **kwargs):
         return json.loads(
@@ -93,7 +93,7 @@ class BaseObject(object):
         return obj
 
     @classmethod
-    def from_base64(cls, b64_str, base=None):
+    def from_b64u(cls, b64_str, base=None):
         return cls.from_json(base64.base64url_decode(b64_str), base)
 
     def save(self, entity_id="me", id=None, *args, **kwargs):

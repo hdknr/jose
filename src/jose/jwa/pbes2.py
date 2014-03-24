@@ -32,11 +32,11 @@ class Pbes2KeyEncryptor(BaseKeyEncryptor):
 
     @classmethod
     def encrypt(cls, kek, cek):
-        return cls._wrapper.encrypt(kek, cek)
+        return cls._wrapper.kek_encrypt(kek, cek)
 
     @classmethod
     def decrypt(cls, kek, cek_ci):
-        return cls._wrapper.decrypt(kek, cek_ci)
+        return cls._wrapper.kek_decrypt(kek, cek_ci)
 
     @classmethod
     def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):

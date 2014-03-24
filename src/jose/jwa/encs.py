@@ -53,7 +53,16 @@ class KeyEncEnumBase(AlgorithmBaseEnum):
             E=keys.KeyTypeEnum.EC,
             G=keys.KeyTypeEnum.OCT,
             P=keys.KeyTypeEnum.OCT,
+            A=keys.KeyTypeEnum.OCT,
         )[self.name[0]]
+
+    @property
+    def single(self):
+        ''' cab be usd for single recipient'''
+        return self.name in [
+            'ECDH_ES', 'DIR',
+        ]
+
 
 KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)
 

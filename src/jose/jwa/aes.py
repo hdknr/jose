@@ -115,7 +115,7 @@ class AesKeyEncryptor(BaseKeyEncryptor):
             cek, iv = _enc.create_key_iv()
         cek_ci = cls.encrypt(jwk, cek, iv, "")
 
-        return (cek, iv, cek_ci)
+        return (cek, iv, cek_ci, None)
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):

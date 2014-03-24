@@ -33,7 +33,8 @@ def generate_key(bits=1024):
 
 class Key(BaseKey):
 
-    def init_material(self, length=1024, **kwargs):
+    def init_material(self, length=2048, **kwargs):
+        length = length or 2048
         self.material = RSA.generate(length)
 
     @property
@@ -203,13 +204,14 @@ class RsaKeyEncryptor(BaseKeyEncryptor):
 
     @classmethod
     def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+        kek = None  #: No Key Encryption Key in RSA Key Wrapping
         if cek:
             #: TODO:chekc iv is valid
             pass
         else:
             cek, iv = jwe.enc.encryptor.create_key_iv()
         cek_ci = cls.encrypt(jwk, cek)
-        return cek, iv, cek_ci
+        return cek, iv, cek_ci, kek
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):

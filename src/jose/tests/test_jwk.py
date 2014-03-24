@@ -32,9 +32,9 @@ class TestJwk(unittest.TestCase):
         jwkset.save()
 
         jwkset2 = JwkSet.load()
-        self.assertEqual(jwkset2.get(kty=KeyTypeEnum.RSA).kid, 'kidRsa')
-        self.assertEqual(jwkset2.get(kty=KeyTypeEnum.EC).kid, 'kidEc')
-        self.assertEqual(jwkset2.get(kty=KeyTypeEnum.OCT).kid, 'kidOct')
+        self.assertEqual(jwkset2.get_key(kty=KeyTypeEnum.RSA).kid, 'kidRsa')
+        self.assertEqual(jwkset2.get_key(kty=KeyTypeEnum.EC).kid, 'kidEc')
+        self.assertEqual(jwkset2.get_key(kty=KeyTypeEnum.OCT).kid, 'kidOct')
 
         jwkset3 = JwkSet()
         jwkset3.keys.append(Jwk.generate(kty=KeyTypeEnum.OCT))

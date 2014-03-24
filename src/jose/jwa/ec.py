@@ -257,7 +257,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
     @classmethod
     def digest_key_bitlength(cls, jwe):
         if cls._KEY_WRAP:
-            return 8 * cls._KEY_WRAP.key_legnth()
+            return 8 * cls._KEY_WRAP.key_length()
         else:
             return 8 * jwe.enc.encryptor.key_length()
 
@@ -274,14 +274,14 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
         klen = cls.digest_key_bitlength(jwe)
         dkey = ConcatKDF(agr, klen, oi)
         if cls._KEY_WRAP and cek:
-            cek_ci = cls._KEY_WRAP.encrypt(dkey, cek)
+            cek_ci = cls._KEY_WRAP.kek_encrypt(dkey, cek)
             return (dkey, cek_ci)
         else:
             return (dkey, None)
 
     @classmethod
     def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
-        if cls._KEY_WARP is None and cek is not None:
+        if cls._KEY_WRAP is None and cek is not None:
             #: CEK must be None for ECDH_ES
             return None
 
@@ -298,18 +298,18 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
         key, cek_ci = cls.create_key(jwe, agr, cek)
         cek = cek if cls._KEY_WRAP else key
         jwe.epk = epk.public_jwk
-        return (cek, iv, cek_ci)
+        return (cek, iv, cek_ci, key)
 
     @classmethod
     def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
-        if cls._KEY_WARP is None and not cek_ci:
+        if cls._KEY_WRAP is None and not cek_ci:
             # ECDH_ES: cek must be None
             return None
 
         agr = jwk.key.agreement_to(jwe.epk.key)
         key, _dmy = cls.create_key(jwe, agr, None)
-        if cls._KEY_WARP:
-            return cls._KEY_WRAP.decrypt(key, cek_ci)
+        if cls._KEY_WRAP:
+            return cls._KEY_WRAP.kek_decrypt(key, cek_ci)
         else:
             return key
 
@@ -317,8 +317,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
 class ECDH_ES(EcdhKeyEncryotor):
     #: TODO: CEK is produced by Static Public + Ephemeral Private
     #:       but, CEK is not deliverd ( means CEK == '' in message )
-    _KEY_WARP = None
-    pass
+    _KEY_WRAP = None
 
 
 #: TODO: CEK is given
