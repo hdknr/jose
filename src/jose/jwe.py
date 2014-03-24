@@ -188,9 +188,15 @@ class Message(CryptoMessage):
         self._cek = None
 
         super(Message, self).__init__(*args, **kwargs)
+
         if isinstance(self.recipients, list):
-            self.recipients = map(lambda i: Recipient(**i),
-                                  self.recipients)
+            rs = []
+            for r in self.recipients:
+                if isinstance(r, Recipient):
+                    rs.append(rs)
+                elif isinstance(r, dict):
+                    rs.append(Recipient(**r))
+            self.recipients = rs
 
         if isinstance(self.protected, basestring):
             self._protected = Jwe.from_b64u(self.protected)
@@ -250,21 +256,23 @@ class Message(CryptoMessage):
         self.recipients = []      # reset recipient
         self.recipients.append(recipient)
 
-    def encrypt(self):
+    def encrypt(self, header=None, auth_data=None):
+        auth_data = auth_data or self.auth_data
+        header = header or self.header()
         assert self.cek
         assert self.iv
         assert self.auth_data
 
-        header = self.header()           # Two Jwe headered are merged.
         plaint = self.zip(self.plaintext)   # 'zip' compression
-        return header.enc.encryptor.encrypt(
-            self.cek, plaint,
-            _BD(self.iv), self.auth_data)
+        ciphert, tag = header.enc.encryptor.encrypt(
+            self.cek, plaint, _BD(self.iv), auth_data)
+        return (ciphert, tag)
 
     def decrypt(self):
         header = self.header()           # Two Jwe headered are merged.
         plaint, is_valid = header.enc.encryptor.decrypt(
-            self.cek, _BD(self.ciphertext),
+            self.cek,
+            _BD(self.ciphertext),
             _BD(self.iv),
             self.auth_data,
             _BD(self.tag))
@@ -292,12 +300,10 @@ class Message(CryptoMessage):
         for recipient in self.recipients:
             me = me or self.receiver
             jwk = recipient.load_key(me)
-#            jwk = recipient.load_key(me).private_jwk
             if jwk:
                 #: key agreement fails if receiver is not me.
                 self.cek = recipient.agree_key(jwk, jwe=header)
                 return self.cek
-        print "no key for", me, header.jku, header.kid
         return None
 
     @property
@@ -352,7 +358,19 @@ class Message(CryptoMessage):
 
         try:
             m = _compact.search(token).groupdict()
-            message = cls(recepients=[Recipient(**m)], **m)
+            header = Jwe.from_b64u(m.get('header', None))
+            recipient = dict(
+                header=header,
+                encrypted_key=m.get('encrypted_key', None),
+            )
+            message = Message(
+                protected=m.get('header', None),
+                iv=m.get('iv', None),
+                tag=m.get('tag', None),
+                ciphertext=m.get('ciphertext', None),
+                recipients=[recipient]
+            )
+
             message.sender = sender
             message.receiver = receiver
             return message
@@ -362,3 +380,23 @@ class Message(CryptoMessage):
             print traceback.format_exc()
 
         return None
+
+    def serialize_json(self, **kwargs):
+        return self.to_json(**kwargs)
+
+    def serialize_compact(self, index=0):
+        if len(self.recipients) < 1:
+            return None
+
+        header = self.header(index)      # all header togher
+        header_b64u = header.to_b64u()   # auth_data = _BE(header)
+        #: encrypt with same CEK+IV, but with new auth_data
+        ciphertext, tag = self.encrypt(header, header_b64u)
+
+        #: Tokenize
+        return ".".join([
+            header_b64u,
+            self.recipients[0].encrypted_key or '',
+            self.iv,
+            _BE(ciphertext),
+            _BE(tag)])

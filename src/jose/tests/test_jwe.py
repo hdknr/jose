@@ -166,7 +166,9 @@ class TestJweMessage(unittest.TestCase):
         self.assertEqual(header3.alg, KeyEncEnum.A192KW)
 
     def _alg_enc_test(self, alg, enc, receiver, jku, plaintext):
-
+        print "==============="
+        print " TESST for", alg, enc
+        print "==============="
         #: Message
         message = Message(
             protected=Jwe(enc=enc, zip="DEF",),
@@ -179,17 +181,18 @@ class TestJweMessage(unittest.TestCase):
         )
         message.add_recipient(recipient, receiver)
 
-        json_message = message.to_json(indent=2)
+        texts = [
+            message.serialize_json(indent=2),
+            message.serialize_compact(),
+        ]
 
-        print json_message
-
-        message2 = Message.from_token(
-            json_message, sender=None, receiver=receiver)
-
-        self.assertEqual(
-            len(message.recipients), len(message2.recipients))
-
-        self.assertEqual(_BD(message2.plaintext), plaintext)
+        for t in texts:
+            print "--------------------------\n", t
+            m = Message.from_token(
+                t, sender=None, receiver=receiver)
+            self.assertEqual(
+                len(message.recipients), len(m.recipients))
+            self.assertEqual(_BD(m.plaintext), plaintext)
 
         return message
 
@@ -209,10 +212,7 @@ class TestJweMessage(unittest.TestCase):
                 KeyTypeEnum.RSA)
 
             for enc in EncEnum.all():
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_aeskw(self):
         receiver = "http://test.aes.com"
@@ -223,10 +223,7 @@ class TestJweMessage(unittest.TestCase):
             for enc in EncEnum.all():
                 jwk = self._create_jwk(receiver, jku, alg)
                 self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_gcmkw(self):
         receiver = "http://test.gcm.com"
@@ -241,10 +238,7 @@ class TestJweMessage(unittest.TestCase):
             for enc in EncEnum.all():
                 jwk = self._create_jwk(receiver, jku, alg)
                 self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_pbes2kw(self):
         receiver = "http://test.pbes2.com"
@@ -259,10 +253,7 @@ class TestJweMessage(unittest.TestCase):
             for enc in EncEnum.all():
                 jwk = self._create_jwk(receiver, jku, alg)
                 self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_ecdhkw(self):
         receiver = "http://test.ecdh.com"
@@ -277,10 +268,7 @@ class TestJweMessage(unittest.TestCase):
             for enc in EncEnum.all():
                 jwk = self._create_jwk(receiver, jku, alg)
                 self.assertEqual(jwk.kty, KeyTypeEnum.EC)
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_ecdhdir(self):
         receiver = "http://test.ecdh.com"
@@ -293,10 +281,7 @@ class TestJweMessage(unittest.TestCase):
             for enc in EncEnum.all():
                 jwk = self._create_jwk(receiver, jku, alg)
                 self.assertEqual(jwk.kty, KeyTypeEnum.EC)
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_dir(self):
         receiver = "http://test.dir.com"
@@ -309,10 +294,7 @@ class TestJweMessage(unittest.TestCase):
             for enc in EncEnum.all():
                 jwk = self._create_jwk(receiver, jku, alg)
                 self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
-                msg = self._alg_enc_test(alg, enc, receiver, jku, plaintext)
-
-                print msg.to_json(indent=2)
-                print Jwe.from_b64u(msg.protected).to_json(indent=2)
+                self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_multi(self):
 
