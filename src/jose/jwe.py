@@ -28,7 +28,7 @@ class ZipEnum(BaseEnum):
         return data
 
     def uncompress(self, data):
-        if self.value == 'DEF':
+        if data and self.value == 'DEF':
             return zlib.decompress(data)
         return data
 
@@ -69,6 +69,12 @@ class Jwe(Crypto):
             self.zip = ZipEnum.create(self.zip)
         if isinstance(self.enc, basestring):
             self.enc = EncEnum.create(self.enc)
+        if isinstance(self.epk, dict):
+            self.epk = Jwk(**self.epk)
+        if isinstance(self.apu, unicode):
+            self.apu = self.apu.encode('utf8')
+        if isinstance(self.apv, unicode):
+            self.apv = self.apv.encode('utf8')
 
     @classmethod
     def from_json(cls, json_str, base=None):
@@ -87,10 +93,10 @@ class Jwe(Crypto):
         return ''
 
     def provide_key(self, jwk):
-        return self.alg.encryptor.provide(jwk, self)
+        return self.alg.encryptor.provide(self.enc, jwk, self)
 
     def agree_key(self, jwk, cek_ci):
-        return self.alg.encryptor.agree(jwk, self, cek_ci)
+        return self.alg.encryptor.agree(self.enc, jwk, self, cek_ci)
 
 
 class Recipient(BaseObject):
@@ -120,18 +126,21 @@ class Recipient(BaseObject):
         assert jwe.enc
         assert jwe.alg
 
+        if jwk.kid and not self.header.kid:
+            self.header.kid = jwk.kid
+
         (self.cek, self.iv, self.encrypted_key, kek
-         ) = jwe.alg.encryptor.provide(jwk, jwe, cek, iv)
+         ) = jwe.alg.encryptor.provide(jwe.enc, jwk, self.header, cek, iv)
         self.encrypted_key = _BE(self.encrypted_key)
 
         return self.cek, self.iv
 
     def agree_key(self, jwk, jwe=None):
-        assert jwk.is_private, "Agreement jwk must be private."
         jwe = jwe and jwe.merge(self.header) or self.header
+        assert jwk.is_private, "Agreement jwk must be private."
 
         self.cek = jwe.alg.encryptor.agree(
-            jwk, self.header, self.encrypted_key)
+            jwe.enc, jwk, self.header, _BD(self.encrypted_key))
         return self.cek
 
     def load_key(self, receiver, jwe=None):
@@ -282,10 +291,13 @@ class Message(CryptoMessage):
         header = self.header()
         for recipient in self.recipients:
             me = me or self.receiver
-            jwk = recipient.load_key(me).private_jwk
-            #: key agreement fails if receiver is not me.
-            self.cek = recipient.agree_key(jwk, jwk=header)
-            return self.cek
+            jwk = recipient.load_key(me)
+#            jwk = recipient.load_key(me).private_jwk
+            if jwk:
+                #: key agreement fails if receiver is not me.
+                self.cek = recipient.agree_key(jwk, jwe=header)
+                return self.cek
+        print "no key for", me, header.jku, header.kid
         return None
 
     @property

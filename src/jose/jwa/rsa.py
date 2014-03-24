@@ -7,7 +7,7 @@ from Crypto.Cipher import (
 )
 from Crypto import Random
 #
-from jose.utils import base64, _BE, _BD, _LBE, _LBD
+from jose.utils import base64, _BD, _LBE, _LBD
 from jose import BaseKey, BaseKeyEncryptor
 from jose.jwk import Jwk
 from jose.jwa import keys
@@ -203,18 +203,18 @@ class RsaKeyEncryptor(BaseKeyEncryptor):
         return cls._cipher.new(jwk.key.public_key).encrypt(cek)
 
     @classmethod
-    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+    def provide(cls, enc, jwk, jwe, cek=None, iv=None, *args, **kwargs):
         kek = None  #: No Key Encryption Key in RSA Key Wrapping
         if cek:
             #: TODO:chekc iv is valid
             pass
         else:
-            cek, iv = jwe.enc.encryptor.create_key_iv()
+            cek, iv = enc.encryptor.create_key_iv()
         cek_ci = cls.encrypt(jwk, cek)
         return cek, iv, cek_ci, kek
 
     @classmethod
-    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+    def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
         return cls.decrypt(jwk, cek_ci)
 
 
@@ -244,13 +244,13 @@ if __name__ == '__main__':
 
     jwk = Jwk.generate(kty=KeyTypeEnum.RSA)
     jwe = Jwe.from_json('{"alg": "RSA1_5", "enc": "A128CBC-HS256"}')
-    cek, iv, cek_ci = jwe.provide_key(jwk)
+    cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
     print "CEK", base64.base64url_encode(cek)
     print "IV", base64.base64url_encode(iv)
     print "CEK_CI", base64.base64url_encode(cek_ci)
 
-    cek2 = jwe.agree_key(cek_ci, jwk)
+    cek2 = jwe.agree_key(jwk, cek_ci)
     print "CEK2", base64.base64url_encode(cek_ci)
     print "IV", base64.base64url_encode(iv)
 

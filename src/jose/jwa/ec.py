@@ -280,7 +280,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
             return (dkey, None)
 
     @classmethod
-    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+    def provide(cls, enc, jwk, jwe, cek=None, iv=None, *args, **kwargs):
         if cls._KEY_WRAP is None and cek is not None:
             #: CEK must be None for ECDH_ES
             return None
@@ -291,7 +291,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
         if cek:
             pass
         else:
-            cek, iv = jwe.enc.encryptor.create_key_iv()
+            cek, iv = enc.encryptor.create_key_iv()
 
         epk = Jwk.generate(kty=KeyTypeEnum.EC)
         agr = epk.key.agreement_to(jwk.key)
@@ -301,7 +301,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
         return (cek, iv, cek_ci, key)
 
     @classmethod
-    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+    def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
         if cls._KEY_WRAP is None and not cek_ci:
             # ECDH_ES: cek must be None
             return None

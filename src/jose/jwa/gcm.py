@@ -57,7 +57,7 @@ class GcmKeyEncryptor(BaseKeyEncryptor):
         return cls._enc.key_length()
 
     @classmethod
-    def provide(cls, jwk, jwe, *args, **kwargs):
+    def provide(cls, enc, jwk, jwe, *args, **kwargs):
         key = jwk.key.shared_key[:cls._enc._KEY_LEN]
         cek, iv = cls._enc.create_key_iv()
         cek_ci, tag = cls._enc.encrypt(key, cek, iv, "")
@@ -68,7 +68,7 @@ class GcmKeyEncryptor(BaseKeyEncryptor):
         return (cek, iv, cek_ci, key)
 
     @classmethod
-    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+    def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
         key = jwk.key.shared_key[:cls._enc._KEY_LEN]
         assert isinstance(jwe.iv, basestring)
         assert isinstance(jwe.tag, basestring)
@@ -115,7 +115,7 @@ if __name__ == '__main__':
             alg=KeyEncEnum.create(a),
             enc=EncEnum.create(e),
         )
-        cek, iv, cek_ci = jwe.provide_key(jwk)
+        cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
         print "alg=", a, "enc=", e
         print "CEK=", base64.base64url_encode(cek)

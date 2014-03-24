@@ -2,9 +2,11 @@
 
 import unittest
 
+from jose.jwk import Jwk
 from jose.jwe import Jwe, ZipEnum, Message, Recipient
 from jose.jwa.encs import KeyEncEnum, EncEnum
 from jose.utils import base64
+import traceback
 
 
 _S = lambda o: ''.join([chr(i) for i in o])
@@ -56,42 +58,12 @@ class TestJwe(unittest.TestCase):
         self.assertIsNone(jwe1.zip)
         self.assertIsNone(jwe2.alg)
 
-    def test_message(self):
-        jwe = Jwe(alg=KeyEncEnum.A128KW)
-        jwe2 = Jwe.from_json(jwe.to_json(indent=2))
-        self.assertEqual(jwe2.alg, jwe.alg)
-        jwe3 = Jwe.from_b64u(jwe.to_b64u())
-        self.assertEqual(jwe3.alg, jwe.alg)
-
-        msg = Message(
-            protected=Jwe(enc=EncEnum.A128CBC_HS256),
-            unprotected=Jwe(zip='DEF'),
-        )
-        rec = Recipient(header=Jwe(alg=KeyEncEnum.A192KW))
-        msg.recipients.append(rec)
-
-        msg2 = Message.from_json(msg.to_json(indent=2))
-        self.assertEqual(len(msg2.recipients), 1)
-        self.assertEqual(msg2.recipients[0].header.alg, KeyEncEnum.A192KW)
-        self.assertEqual(msg2.unprotected.zip, ZipEnum.DEF)
-
-        header2 = msg2.header()
-        self.assertEqual(header2.enc, EncEnum.A128CBC_HS256)
-        self.assertEqual(header2.zip, ZipEnum.DEF)
-        self.assertIsNone(header2.alg)
-
-        header3 = msg2.header(0)
-        self.assertEqual(header3.enc, EncEnum.A128CBC_HS256)
-        self.assertEqual(header3.zip, ZipEnum.DEF)
-        self.assertEqual(header3.alg, KeyEncEnum.A192KW)
-
     def test_jwa_appendix_a4(self):
         import os
         json_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             'jwe_appendix_a4.json')
 
-        from jose.jwe import Message
         msg = Message.from_file(json_file)
 
         # A.4.1 - JWE Per-Recipient Unprotected Headers
@@ -159,6 +131,79 @@ class TestJwe(unittest.TestCase):
 
         #:
         print msg.to_json(indent=2)
+
+
+class TestJweMessage(unittest.TestCase):
+
+    def test_message(self):
+        jwe = Jwe(alg=KeyEncEnum.A128KW)
+        jwe2 = Jwe.from_json(jwe.to_json(indent=2))
+        self.assertEqual(jwe2.alg, jwe.alg)
+        jwe3 = Jwe.from_b64u(jwe.to_b64u())
+        self.assertEqual(jwe3.alg, jwe.alg)
+
+        msg = Message(
+            protected=Jwe(enc=EncEnum.A128CBC_HS256),
+            unprotected=Jwe(zip='DEF'),
+        )
+        rec = Recipient(header=Jwe(alg=KeyEncEnum.A192KW))
+        msg.recipients.append(rec)
+
+        msg2 = Message.from_json(msg.to_json(indent=2))
+        self.assertEqual(len(msg2.recipients), 1)
+        self.assertEqual(msg2.recipients[0].header.alg, KeyEncEnum.A192KW)
+        self.assertEqual(msg2.unprotected.zip, ZipEnum.DEF)
+
+        header2 = msg2.header()
+        self.assertEqual(header2.enc, EncEnum.A128CBC_HS256)
+        self.assertEqual(header2.zip, ZipEnum.DEF)
+        self.assertIsNone(header2.alg)
+
+        header3 = msg2.header(0)
+        self.assertEqual(header3.enc, EncEnum.A128CBC_HS256)
+        self.assertEqual(header3.zip, ZipEnum.DEF)
+        self.assertEqual(header3.alg, KeyEncEnum.A192KW)
+
+    def test_multi_recipients(self):
+
+        payload = "Everybody wants to rule the world."
+
+        enc = EncEnum.all()[0]
+
+        for enc in EncEnum.all():
+            message = Message(
+                protected=Jwe(enc=enc, zip="DEF",),
+                unprotected=Jwe(typ="text"),
+                plaintext=_BE(payload)
+            )
+
+            receivers = []
+            for alg in KeyEncEnum.all():
+                if alg.single:
+                    continue
+                receiver = 'https://%s.com/' % alg.name.lower()
+                receivers.append(receiver)
+                jku = receiver + 'jwkset'
+                Jwk.get_or_create_from(
+                    receiver, jku, alg.key_type, kid=None,)
+
+                recipient = Recipient(
+                    header=Jwe(alg=alg, jku=jku,)
+                )
+                message.add_recipient(recipient, receiver)
+
+            json_message = message.to_json(indent=2)
+
+            for me in receivers:
+                message2 = Message.from_token(
+                    json_message, sender=None, receiver=me)
+
+                self.assertEqual(
+                    len(message.recipients), len(message2.recipients))
+                try:
+                    print _BD(message2.plaintext), enc, me
+                except:
+                    print traceback.format_exc()
 
 if __name__ == '__main__':
     unittest.main()

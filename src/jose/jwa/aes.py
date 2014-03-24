@@ -106,8 +106,9 @@ class AesKeyEncryptor(BaseKeyEncryptor):
         return aes_key_unwrap(kek, cek_ci)
 
     @classmethod
-    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
-        _enc = jwe.enc.encryptor
+    def provide(cls, enc, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+#        _enc = jwe.enc.encryptor
+        _enc = enc.encryptor
         if cek:
             #:TODO check iv lenth and validity
             pass
@@ -118,7 +119,7 @@ class AesKeyEncryptor(BaseKeyEncryptor):
         return (cek, iv, cek_ci, None)
 
     @classmethod
-    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+    def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
         cek = cls.decrypt(jwk, cek_ci)
         return cek
 
@@ -249,7 +250,7 @@ if __name__ == '__main__':
             alg=KeyEncEnum.create(a),
             enc=EncEnum.create(e),
         )
-        cek, iv, cek_ci = jwe.provide_key(jwk)
+        cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
         print "alg=", a, "enc=", e
         print "CEK=", base64.base64url_encode(cek)

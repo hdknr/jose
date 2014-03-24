@@ -63,6 +63,14 @@ class KeyEncEnumBase(AlgorithmBaseEnum):
             'ECDH_ES', 'DIR',
         ]
 
+    @classmethod
+    def all(cls):
+        return [cls.create(val) for val in KeyEncDict.values()]
+
+    @classmethod
+    def values(cls):
+        return KeyEncDict.values()
+
 
 KeyEncEnum = type('KeyEncEnum', (KeyEncEnumBase,), KeyEncDict)
 
@@ -86,5 +94,13 @@ class EncEnumBase(BaseEnum):
         return getattr(
             dict(A=aes, G=gcm)[self.name[0]],
             self.name)
+
+    @classmethod
+    def all(cls):
+        return [cls.create(val) for val in EncDict.values()]
+
+    @classmethod
+    def values(cls):
+        return EncDict.values()
 
 EncEnum = type('EncEnum', (EncEnumBase,), EncDict)

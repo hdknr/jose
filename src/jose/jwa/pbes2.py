@@ -11,7 +11,7 @@ from Crypto import Random
 from pbkdf2 import PBKDF2
 from jose import BaseKeyEncryptor
 from jose.jwa.aes import A128KW, A192KW, A256KW
-from jose.utils import base64
+from jose.utils import base64, _BD, _BE
 
 
 class Pbes2KeyEncryptor(BaseKeyEncryptor):
@@ -25,7 +25,7 @@ class Pbes2KeyEncryptor(BaseKeyEncryptor):
 
     @classmethod
     def derive(cls, jwk, salt, count, *args, **kwargs):
-        salt = base64.base64url_decode(salt)
+        salt = _BD(salt)
         return PBKDF2(jwk.key.shared_key, salt, count,
                       digestmodule=cls._digester,
                       macmodule=cls._mac).read(cls._wrapper._KEY_LEN)
@@ -39,14 +39,14 @@ class Pbes2KeyEncryptor(BaseKeyEncryptor):
         return cls._wrapper.kek_decrypt(kek, cek_ci)
 
     @classmethod
-    def provide(cls, jwk, jwe, cek=None, iv=None, *args, **kwargs):
+    def provide(cls, enc, jwk, jwe, cek=None, iv=None, *args, **kwargs):
         if cek:
             #: TODO: Check iv is valid or not
             pass
         else:
-            cek, iv = jwe.enc.encryptor.create_key_iv()
+            cek, iv = enc.encryptor.create_key_iv()
 
-        jwe.p2s = jwe.p2s or base64.base64url_encode(
+        jwe.p2s = jwe.p2s or _BE(
             Random.get_random_bytes(cls._wrapper._KEY_LEN))
         jwe.p2c = jwe.p2c or 1024
 
@@ -56,8 +56,8 @@ class Pbes2KeyEncryptor(BaseKeyEncryptor):
         return cek, iv, cek_ci, kek
 
     @classmethod
-    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
-        kek = cls.derive(jwk, jwe, *args, **kwargs)
+    def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
+        kek = cls.derive(jwk, jwe.p2s, jwe.p2c, *args, **kwargs)
         return cls.decrypt(kek, cek_ci)
 
 
