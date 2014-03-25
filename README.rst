@@ -49,3 +49,11 @@ Also, make to work with GCM192, 256:
 
     https://github.com/hdknr/AES-GCM-Python/commit/07d58bc0a81fbf9bdeea85b45bb42ca8cdd7c512
 
+
+TODO:
+------
+
+- Test Jws.alg == 'none' 
+- Provide "create new Jwk if not found" function.  
+  Set 'kid' in search parameter to new Jwk and save.
+
