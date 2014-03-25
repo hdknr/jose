@@ -324,7 +324,7 @@ class TestJweMessage(unittest.TestCase):
                 )
                 message.add_recipient(recipient, receiver)
 
-            json_message = message.to_json(indent=2)
+            json_message = message.serialize_json(indent=2)
 
             for me in receivers:
                 message2 = Message.from_token(

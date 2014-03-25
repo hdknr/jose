@@ -94,7 +94,7 @@ class MultiCommand(JweCommand):
             )
             message.add_recipient(recipient, receiver)
 
-        print message.to_json(indent=2)
+        print message.serialize_json(indent=2)
 
 
 class ParseCommand(JweCommand):

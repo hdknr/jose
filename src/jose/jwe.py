@@ -131,6 +131,7 @@ class Recipient(BaseObject):
 
         (self.cek, self.iv, self.encrypted_key, kek
          ) = jwe.alg.encryptor.provide(jwe.enc, jwk, self.header, cek, iv)
+
         self.encrypted_key = _BE(self.encrypted_key)
 
         return self.cek, self.iv
@@ -189,14 +190,7 @@ class Message(CryptoMessage):
 
         super(Message, self).__init__(*args, **kwargs)
 
-        if isinstance(self.recipients, list):
-            rs = []
-            for r in self.recipients:
-                if isinstance(r, Recipient):
-                    rs.append(rs)
-                elif isinstance(r, dict):
-                    rs.append(Recipient(**r))
-            self.recipients = rs
+        self._convert_recipients(self.recipients)
 
         if isinstance(self.protected, basestring):
             self._protected = Jwe.from_b64u(self.protected)
@@ -209,6 +203,18 @@ class Message(CryptoMessage):
 
         if isinstance(self.unprotected, dict):
             self.unprotected = Jwe(**self.unprotected)
+
+    def _convert_recipients(self, src):
+        if not isinstance(src, list):
+            return
+
+        new = []
+        for r in src:
+            if isinstance(r, Recipient):
+                new.append(r)
+            elif isinstance(r, dict):
+                new.append(Recipient(**r))
+        self.recipients = new
 
     def header(self, index=-1):
         res = self._protected.merge(self.unprotected)
@@ -234,27 +240,6 @@ class Message(CryptoMessage):
             else:
                 return self._protected.zip.compress(src)
         return src
-
-    def create_ciphertext(self, recipient, receiver):
-        ''' before call, recipient has to be provided _iv and _cek
-        '''
-        #: Find key for encrypt CEK
-        jwk = recipient.load_key(receiver)
-
-        #: Provide CEK & IV
-        (self.cek, self.iv) = recipient.provide_key(
-            jwk, jwe=self.header())
-        self.iv = _BE(self.iv)
-
-        #: Content encryption
-        (self.ciphertext,
-         self.tag) = self.encrypt()
-
-        self.ciphertext = _BE(self.ciphertext)
-        self.tag = _BE(self.tag)
-
-        self.recipients = []      # reset recipient
-        self.recipients.append(recipient)
 
     def encrypt(self, header=None, auth_data=None):
         auth_data = auth_data or self.auth_data
@@ -285,14 +270,20 @@ class Message(CryptoMessage):
         ''' before call, recipient has to be provided with
             messsage's CEK and IV
         '''
-        if len(self.recipients) < 1:
-            self.create_ciphertext(recipient, receiver)
-            return
-
-        # use existent cek and iv
         header = self.header()
         key = recipient.load_key(receiver, header)
-        recipient.provide_key(key, self.cek, self.iv, jwe=header)
+
+        if len(self.recipients) < 1:
+            #: Provide CEK & IV
+            (self.cek, self.iv) = recipient.provide_key(
+                key, jwe=header)
+            self.iv = _BE(self.iv)
+        else:
+            # use existent cek and iv
+            assert self.cek
+            assert self.iv
+            recipient.provide_key(key, self.cek, self.iv, jwe=header)
+
         self.recipients.append(recipient)
 
     def find_cek(self, me=None):
@@ -382,6 +373,16 @@ class Message(CryptoMessage):
         return None
 
     def serialize_json(self, **kwargs):
+        assert self.iv
+        assert self.cek
+
+        #: Content encryption
+        (self.ciphertext,
+         self.tag) = self.encrypt()
+
+        self.ciphertext = _BE(self.ciphertext)
+        self.tag = _BE(self.tag)
+
         return self.to_json(**kwargs)
 
     def serialize_compact(self, index=0):

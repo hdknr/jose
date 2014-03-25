@@ -156,11 +156,11 @@ class BaseKey(object):
 
 class BaseKeyEncryptor(object):
     @classmethod
-    def provide(cls, jwk, jwe, *args, **kwargs):
+    def provide(cls, enc, jwk, jwe, *args, **kwargs):
         raise NotImplemented()
 
     @classmethod
-    def agree(cls, jwk, jwe, cek_ci, *args, **kwargs):
+    def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
         raise NotImplemented()
 
 
