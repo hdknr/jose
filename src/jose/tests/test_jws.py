@@ -395,6 +395,27 @@ class TestJwsMessage(unittest.TestCase):
             self.assertTrue(alg.signer.verify(jwk, plaintext, signature))
             print alg.value, jwk.kty.value, len(signature), _BE(signature)
 
+    def test_compact(self):
+        for alg in SigDict.values():
+            alg = SigEnum.create(alg)
+
+            signer = "https://%s.com" % alg.name
+            jku = signer + "/jwkset"
+            jwk = Jwk.get_or_create_from(
+                signer, jku, alg.key_type, kid=None,)
+
+            plaintext = "This is a message to be signed by %s" % alg.value
+            msg = Message(
+                payload=_BE(plaintext), sender=signer)
+            msg.add_signature(
+                protected=Jws(alg=alg, kid=None, jku=jku),
+                header=Jws(typ="text"),
+            )
+            token = msg.serialize_compact()
+
+            msg2 = Message.from_token(token, sender=signer)
+            print alg.value, jwk.kty.value, token
+            self.assertTrue(msg2.verify())
 
 if __name__ == '__main__':
     unittest.main()

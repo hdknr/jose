@@ -8,7 +8,7 @@ import traceback
 _component = [
     r'^(?P<protected>[^\.]+)',
     r'(?P<payload>[^\.]+)',
-    r'(?P<signature>[^\.]+)$',
+    r'(?P<signature>[^\.]*)$',
 ]
 
 _compact = re.compile('\\.'.join(_component))
@@ -87,9 +87,9 @@ class Signature(BaseObject):
         #: merge protected and header(public)
         return self._protected.merge(self.header)
 
-    def to_compact_token(self, b64_payload, jwk):
-        self.sign(b64_payload, jwk)
-        return ".".join([self.protected, b64_payload, self.signature])
+    def to_compact_token(self, payload, jwk):
+        self.sign(payload, jwk)
+        return ".".join([self.protected, _BE(payload), self.signature])
 
     def signing_input(self, b64_payload):
         b64_header = self.protected         # TODO: Check spec
@@ -176,7 +176,7 @@ class Message(CryptoMessage):
 
         try:
             m = _compact.search(token).groupdict()
-            obj = cls(_sender=sender, _receiver=receiver,
+            obj = cls(sender=sender, receiver=receiver,
                       signatures=[Signature(**m)], **m)
             return obj
         except Exception, e:
@@ -197,7 +197,7 @@ class Message(CryptoMessage):
         ret = True
         for sig in self.signatures:
             jwk = sig.load_key(self.sender)
-            ret = ret and sig.verify(self.payload, jwk)
+            ret = ret and sig.verify(_BD(self.payload), jwk)
         return ret
 
     def load_key(self, index):
@@ -218,5 +218,6 @@ class Message(CryptoMessage):
         ''' use the very first of Signature object
             in "signatures list.
         '''
+        assert self.payload
         jwk = jwk or self.load_key(0).private_jwk
         return self.signatures[0].to_compact_token(self.payload, jwk)
