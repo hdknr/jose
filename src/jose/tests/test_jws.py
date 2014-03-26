@@ -406,7 +406,7 @@ class TestJwsMessage(unittest.TestCase):
 
             plaintext = "This is a message to be signed by %s" % alg.value
             msg = Message(
-                payload=_BE(plaintext), sender=signer)
+                payload=plaintext, sender=signer)
             msg.add_signature(
                 protected=Jws(alg=alg, kid=None, jku=jku),
                 header=Jws(typ="text"),
@@ -416,6 +416,30 @@ class TestJwsMessage(unittest.TestCase):
             msg2 = Message.from_token(token, sender=signer)
             print alg.value, jwk.kty.value, token
             self.assertTrue(msg2.verify())
+
+    def test_json(self):
+        plaintext = "This is a message to be signed by me"
+        signer = "https://me.com"
+        jku = signer + "/jwkset"
+
+        msg = Message(payload=plaintext, sender=signer)
+
+        for alg in SigDict.values():
+            alg = SigEnum.create(alg)
+
+            jwk = Jwk.get_or_create_from(
+                signer, jku, alg.key_type, kid=None,)
+
+            msg.add_signature(
+                protected=Jws(alg=alg, kid=None, jku=jku),
+                header=Jws(typ="text"),
+            )
+
+        json_msg = msg.serialize_json(indent=2)
+        print json_msg
+        msg2 = Message.from_token(json_msg, sender=signer)
+        self.assertTrue(msg2.verify())
+
 
 if __name__ == '__main__':
     unittest.main()

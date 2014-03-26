@@ -176,6 +176,7 @@ class Message(CryptoMessage):
 
         try:
             m = _compact.search(token).groupdict()
+            m['payload'] = _BD(m['payload'])
             obj = cls(sender=sender, receiver=receiver,
                       signatures=[Signature(**m)], **m)
             return obj
@@ -197,7 +198,7 @@ class Message(CryptoMessage):
         ret = True
         for sig in self.signatures:
             jwk = sig.load_key(self.sender)
-            ret = ret and sig.verify(_BD(self.payload), jwk)
+            ret = ret and sig.verify(self.payload, jwk)
         return ret
 
     def load_key(self, index):
