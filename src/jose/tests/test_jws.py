@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from jose.utils import base64
+from jose.utils import base64, _BE
 
 from jose.jws import Jws, Message, Signature
-from jose.jwa.sigs import SigEnum
+from jose.jwa.sigs import SigEnum, SigDict
 from jose.jwa.keys import KeyTypeEnum
 from jose.jwt import Jwt
 from jose.jwk import Jwk
@@ -376,6 +376,24 @@ class TestJws(unittest.TestCase):
 
         self.assertTrue(msg.signatures[0].verify(
                         msg.payload, jwk=jwk))
+
+
+class TestJwsMessage(unittest.TestCase):
+
+    def test_algs(self):
+        for alg in SigDict.values():
+            alg = SigEnum.create(alg)
+
+            signer = "https://%s.com" % alg.name
+            jku = signer + "/jwkset"
+            jwk = Jwk.get_or_create_from(
+                signer, jku, alg.key_type, kid=None,)
+
+            plaintext = "This is a message to be signed by %s" % alg.value
+
+            signature = alg.signer.sign(jwk, plaintext)
+            self.assertTrue(alg.signer.verify(jwk, plaintext, signature))
+            print alg.value, jwk.kty.value, len(signature), _BE(signature)
 
 
 if __name__ == '__main__':
