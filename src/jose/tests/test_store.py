@@ -8,7 +8,7 @@ from jose.jwk import Jwk
 class TestStore(unittest.TestCase):
 
     def test_save_and_load(self):
-        fs = FileStore()
+        fs = FileStore(None)
         jwk = Jwk()
         fs.save(jwk)
 

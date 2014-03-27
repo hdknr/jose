@@ -156,7 +156,10 @@ class RsaSigner(object):
         assert jwk.key is not None
         dig = cls._digester.new(data)
         verifier = cls._signer.new(jwk.key.public_key)
-        return 1 == verifier.verify(dig, signature)
+        try:
+            return 1 == verifier.verify(dig, signature)
+        except:
+            return False
 
 
 class RS256(RsaSigner):

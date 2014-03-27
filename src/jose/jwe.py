@@ -119,7 +119,7 @@ class Recipient(BaseObject):
         self._cek, self._iv = None, None
 
     def provide_key(self, jwk, cek=None, iv=None, jwe=None):
-        jwe = jwe and jwe.merge(self.header) or self.header
+        jwe = Jwe.merge(self.header, jwe)
 
         assert jwk and isinstance(jwk, Jwk), "Recipient's Jwk must specifile"
         assert jwe
@@ -137,16 +137,13 @@ class Recipient(BaseObject):
         return self.cek, self.iv
 
     def agree_key(self, jwk, jwe=None):
-        jwe = jwe and jwe.merge(self.header) or self.header
+        jwe = Jwe.merge(self.header, jwe)
         assert jwk.is_private, "Agreement jwk must be private."
 
         self.cek = jwe.alg.encryptor.agree(
-            jwe.enc, jwk, self.header, _BD(self.encrypted_key))
+            jwe.enc, jwk, self.header,
+            _BD(self.encrypted_key))
         return self.cek
-
-    def load_key(self, receiver, jwe=None):
-        jwe = jwe and jwe.merge(self.header) or self.header
-        return jwe.load_key(receiver)
 
     @property
     def cek(self):
@@ -216,11 +213,13 @@ class Message(CryptoMessage):
                 new.append(Recipient(**r))
         self.recipients = new
 
-    def header(self, index=-1):
-        res = self._protected.merge(self.unprotected)
-        if index < 0:
-            return res
-        return res.merge(self.recipients[index].header)
+    def header(self, index=-1, jwe=None):
+        return Jwe.merge(
+            self._protected,
+            self.unprotected,
+            self.recipients[index].header if index >= 0 else None,
+            jwe,
+        )
 
     @property
     def auth_data(self):
@@ -270,8 +269,8 @@ class Message(CryptoMessage):
         ''' before call, recipient has to be provided with
             messsage's CEK and IV
         '''
-        header = self.header()
-        key = recipient.load_key(receiver, header)
+        header = self.header(jwe=recipient.header)
+        key = header.load_key(receiver)
 
         if len(self.recipients) < 1:
             #: Provide CEK & IV
@@ -290,7 +289,7 @@ class Message(CryptoMessage):
         header = self.header()
         for recipient in self.recipients:
             me = me or self.receiver
-            jwk = recipient.load_key(me)
+            jwk = self.header(jwe=recipient.header).load_key(me)
             if jwk:
                 #: key agreement fails if receiver is not me.
                 self.cek = recipient.agree_key(jwk, jwe=header)

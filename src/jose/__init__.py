@@ -80,6 +80,12 @@ class BaseObject(object):
             self.to_json(*args, **kwargs))
 
     @classmethod
+    def merge(cls, *obj):
+        vals = cls._fields.copy()
+        map(lambda o: vals.update(o and o.to_dict() or {}), obj)
+        return cls(**vals)
+
+    @classmethod
     def from_json(cls, json_str, base=None):
         base = base or cls
         obj = base(**json.loads(json_str))
@@ -181,10 +187,17 @@ class BaseContentEncryptor(object):
 
 
 class BaseStore(object):
+    def __init__(self, conf, *args, **kwargs):
+        self.conf = conf
+
     def save(self, obj, entity_id="me", id=None, *args, **kwargs):
+        ''' Can can provide many backend based on type(obj)
+        '''
         pass
 
     def load(self, obj_class, entity_id="me", id=None, *args, **kwargs):
+        ''' Can can provide many backend based on obj_class
+        '''
         pass
 
 

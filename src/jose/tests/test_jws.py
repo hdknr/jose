@@ -33,7 +33,7 @@ class TestJws(unittest.TestCase):
         self.assertEqual(jws1.alg, SigEnum.RS256)
         self.assertEqual(jws2.kid, "2019")
 
-        jws3 = jws1.merge(jws2)
+        jws3 = Jws.merge(jws1, jws2)
 
         self.assertEqual(jws3.alg, SigEnum.RS256)
         self.assertEqual(jws3.kid, '2019')
@@ -56,7 +56,7 @@ class TestJws(unittest.TestCase):
         self.assertEqual(len(msg.signatures), 1)
         self.assertTrue(isinstance(msg.signatures[0],  Signature))
 
-        jws0 = msg.signatures[0].to_jws()
+        jws0 = msg.signatures[0].all_header()
         self.assertIsNotNone(jws0)
         self.assertEqual(jws0.typ, 'JWT')
         self.assertEqual(jws0.alg, SigEnum.HS256)
@@ -178,10 +178,10 @@ class TestJws(unittest.TestCase):
         ##########################
         # implementation
         jws_impl = Jws(alg='RS256')
-        msg = jws_impl.create_message(payload)
+        msg = Message(payload=_BE(payload))
+        msg.signatures.append(Signature(_protected=jws_impl))
 
-        s = msg.signatures[0]
-        token = s.to_compact_token(msg.payload, jwk=jwk)
+        token = msg.serialize_compact(jwk=jwk)
         items = token.split('.')
         self.assertEqual(len(msg.signatures), 1)
         self.assertEqual(msg.signatures[0]._protected.alg.value, 'RS256')
@@ -193,7 +193,9 @@ class TestJws(unittest.TestCase):
         #: restore token
         msg2 = Message.from_token(token, sender=None, receiver=None)
         self.assertEqual(len(msg2.signatures), 1)
-        self.assertEqual(msg2.payload, base64.base64url_encode(payload))
+        self.assertEqual(msg2.payload, _BE(payload))
+        self.assertEqual(msg2.payload, msg.payload)
+
         self.assertEqual(len(msg2.signatures), 1)
         self.assertEqual(msg2.signatures[0]._protected.alg.value, 'RS256')
         self.assertEqual(msg2.signatures[0].protected, items[0])
@@ -206,7 +208,6 @@ class TestJws(unittest.TestCase):
 
         #: wrong key fails
         new_jwk = Jwk.generate(KeyTypeEnum.RSA)
-
         self.assertFalse(s.verify(msg2.payload, jwk=new_jwk))
 
         #: Json Serialization
@@ -374,6 +375,7 @@ class TestJws(unittest.TestCase):
         self.assertEqual(r, bytes_to_long("".join(chr(i) for i in R)))
         self.assertEqual(s, bytes_to_long("".join(chr(i) for i in S)))
 
+        print jwk.to_json(indent=2)
         self.assertTrue(msg.signatures[0].verify(
                         msg.payload, jwk=jwk))
 
@@ -427,7 +429,7 @@ class TestJwsMessage(unittest.TestCase):
         for alg in SigDict.values():
             alg = SigEnum.create(alg)
 
-            jwk = Jwk.get_or_create_from(
+            Jwk.get_or_create_from(
                 signer, jku, alg.key_type, kid=None,)
 
             msg.add_signature(

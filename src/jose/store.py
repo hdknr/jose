@@ -1,20 +1,15 @@
 # -*- coding: utf-8; -*-
+''' Standard File Store Class
+'''
 import os
 import urllib
 from jose import BaseStore
 import requests
 
 
-class Store(object):
-    def save(self, obj, entity_id="me", id=None, *args, **kwargs):
-        pass
-
-    def load(self, obj_class, entity_id="me", id=None, *args, **kwargs):
-        pass
-
-
 class FileStore(BaseStore):
-    def __init__(self, base=None):
+    def __init__(self, conf, base=None):
+        self.conf = conf        # Configuration
         self.base = base or os.path.join(
             os.environ.get('HOME', '/tmp'), ".jose")
         if not os.path.isdir(self.base):

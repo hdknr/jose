@@ -1,28 +1,29 @@
 from jose import BaseObject
+from jose.utils import merged
 from jose.jwk import JwkSet
-import copy
+
+_crypto_fields = dict(
+    alg=None,      #: Algorithm (KeyEncEnum, SigEnum)
+    typ=None,      #: Type of objects ciphered.
+    cty=None,      #: Content type of object
+    crit=None,     #: Critical
+)
+
+_key_hint_fields = dict(
+    jku=None,      #: Uri to hosted JwkSet
+    jwk=None,      #: Jwk
+    kid=None,      #: Key Id of Jwk
+    x5u=None,      #: Uri to hosted X.509
+    x5c=None,      #: array of base64url DER X.509 Certificate
+    x5t=None,      #: Thumprint of X.509 Certificate
+)
 
 
 class Crypto(BaseObject):
-    _fields = dict(
-        alg=None,      #: Algorithm
-        jku=None,      #: Uri to hosted JwkSet
-        jwk=None,      #: Jwk
-        kid=None,      #: Key Id of Jwk
-        x5u=None,      #: Uri to hosted X.509
-        x5c=None,      #: array of base64url DER X.509 Certificate
-        x5t=None,      #: Thumprint of X.509 Certificate
-        typ=None,      #: Type of objects ciphered.
-        cty=None,      #: Content type of object
-        crit=None,     #: Critical
-    )
-
-    @classmethod
-    def from_token(cls, token):
-        return None
-
-    def to_token(self):
-        raise NotImplemented
+    _fields = merged([
+        _crypto_fields,
+        _key_hint_fields,
+    ])
 
     def load_key(self, owner):
         '''
@@ -33,14 +34,6 @@ class Crypto(BaseObject):
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
         keyset = JwkSet.load(owner, self.jku) or JwkSet()
         return keyset.get_key(self.alg.key_type, self.kid)
-
-    def merge(self, crypto):
-        res = copy.deepcopy(self)
-        if crypto and type(self) == type(crypto):
-            for k, v in crypto.__dict__.items():
-                if v:
-                    setattr(res, k, v)
-        return res
 
     def set_value(self, key, value):
         if key in self._fields and value:

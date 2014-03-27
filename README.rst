@@ -53,7 +53,5 @@ Also, make to work with GCM192, 256:
 TODO:
 ------
 
-- Test Jws.alg == 'none' 
-- Provide "create new Jwk if not found" function.  
-  Set 'kid' in search parameter to new Jwk and save.
-
+- Key finding parameters CAN NOT be used in OpenID Conncet ID Token. (Core Section.2)
+  jws.Message and jwe.Message can be given a specific JwkSet to find proper key.

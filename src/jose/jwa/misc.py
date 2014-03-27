@@ -1,5 +1,6 @@
 from jose import BaseKeyEncryptor
 
+
 class NONE(object):
 
     @classmethod
@@ -25,4 +26,5 @@ class DIR(BaseKeyEncryptor):
     def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
         ''' cek_ci = None
         '''
+        print "@@@@.....>", enc
         return jwk.key.shared_key[:enc.encryptor.key_length()]

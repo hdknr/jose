@@ -52,7 +52,7 @@ class TestJwe(unittest.TestCase):
         '''
         jwe1 = Jwe.from_json('{ "alg": "RSA1_5"}')
         jwe2 = Jwe.from_json('{ "zip": "DEF"}')
-        jwe3 = jwe1.merge(jwe2)
+        jwe3 = Jwe.merge(jwe1, jwe2)
 
         self.assertEqual(jwe3.alg, KeyEncEnum.RSA1_5)
         self.assertEqual(jwe3.zip, ZipEnum.DEF)

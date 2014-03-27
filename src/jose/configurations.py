@@ -6,11 +6,12 @@ import struct
 
 class Configuration(object):
     def __init__(self, store=None, *args, **kwargs):
+        # Object Store Class
         self.store = store or import_class(
             os.environ.get(
                 'JOSE_STORE_CLASS',
                 'jose.store.FileStore')
-        )()
+        )(self)
 
     def generate_kid(self, kty, length, *args, **kwargs):
         '''
