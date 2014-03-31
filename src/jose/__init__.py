@@ -32,13 +32,14 @@ class BaseObjectSerializer(json.JSONEncoder):
             return obj.value
         if isinstance(obj, object):
             #: instance as dict
+            ex = isinstance(obj, BaseObject) and obj._excludes or []
             if hasattr(obj, '_customs'):
                 vals = obj._customs.copy()
             else:
                 vals = {}
             vals.update(obj.__dict__)
             return dict([(k, v) for k, v in vals.items()
-                         if not k.startswith('_') and v])
+                         if k not in ex and not k.startswith('_') and v])
 
         return super(BaseObjectSerializer, self).default(obj)
 
@@ -46,6 +47,7 @@ class BaseObjectSerializer(json.JSONEncoder):
 class BaseObject(object):
     _serializer = BaseObjectSerializer
     _fields = {}
+    _excludes = []
 
     def __init__(self, **kwargs):
         self._customs = {}
@@ -55,7 +57,7 @@ class BaseObject(object):
         return self._customs.get(key, None)
 
     def __setitem__(self, key, val):
-        self.__customs[key] = val
+        self._customs[key] = val
 
     def set_values(self, inits, vals):
         keys = inits.keys()

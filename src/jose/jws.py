@@ -47,9 +47,12 @@ class Signature(BaseObject):
         signature='',      #: base64url(utf8(JWS Signature))
     )
 
-    def __init__(self, **kwargs):
+    _excludes = ['sender', ]
+
+    def __init__(self, sender=None, **kwargs):
         super(Signature, self).__init__(**kwargs)
 
+        self.sender = sender
         self._protected = None
         #: Jws object from self.protected
         #: becuase json serialization results could be different
@@ -114,9 +117,9 @@ class Signature(BaseObject):
             self.protected = base64.base64url_encode(
                 self._protected.to_json())
 
-    def load_key(self, owner):
+    def load_key(self):
         jws = self.all_header()
-        return jws.load_key(owner)
+        return jws.load_key(self.sender)
 
 
 class Message(CryptoMessage):
@@ -136,11 +139,12 @@ class Message(CryptoMessage):
                     sigs.append(sig)
             self.signatures = sigs
 
-    def add_signature(self, protected=None, header=None):
+    def add_signature(self, sender=None, protected=None, header=None):
         signature = Signature(
+            sender=sender,
             protected=protected, header=header)
 
-        jwk = signature.load_key(self.sender)
+        jwk = signature.load_key()
         signature.sign(self.payload, jwk)
         self.signatures.append(signature)
 
@@ -153,8 +157,9 @@ class Message(CryptoMessage):
 
         try:
             message = cls.from_json(token)
-            message.sender = sender
-            message.receiver = receiver
+            for sig in message.signatures:
+                sig.sender = sender
+
             return message
 
         except ValueError:
@@ -166,8 +171,7 @@ class Message(CryptoMessage):
 
         try:
             m = _compact.search(token).groupdict()
-            obj = cls(sender=sender, receiver=receiver,
-                      signatures=[Signature(**m)], **m)
+            obj = cls(signatures=[Signature(sender=sender, **m)], **m)
             return obj
         except Exception, e:
             print ">>>>>>", type(e)
@@ -186,7 +190,7 @@ class Message(CryptoMessage):
 
         ret = True
         for sig in self.signatures:
-            jwk = sig.load_key(self.sender)
+            jwk = sig.load_key()
             ret = ret and sig.verify(self.payload, jwk)
         return ret
 
@@ -195,7 +199,7 @@ class Message(CryptoMessage):
             each signature.
         '''
         for sig in self.signatures:
-            sigjwk = jwk or sig.load_key(self.sender).private_jwk
+            sigjwk = jwk or sig.load_key().private_jwk
             sig.sign(self.payload, sigjwk)
 
         return self.to_json(**kwargs)
@@ -207,7 +211,7 @@ class Message(CryptoMessage):
         sig = self.signatures[index]
 
         assert self.payload
-        jwk = jwk or sig.load_key(self.sender)
+        jwk = jwk or sig.load_key()
 
         sig.sign(self.payload, jwk)
         return ".".join([

@@ -106,8 +106,10 @@ class Recipient(BaseObject):
         header=None,            # JWE Per-Recipient Unprotected Header
         encrypted_key=None,     # BASE64URL(JWE Encrypted Key)
     )
+    _excludes = [
+        'recipient', 'cek', 'iv', ]
 
-    def __init__(self, **kwargs):
+    def __init__(self, recipient=None, iv=None, cek=None, **kwargs):
         super(Recipient, self).__init__(**kwargs)
 
         # Jwe
@@ -116,7 +118,9 @@ class Recipient(BaseObject):
         elif isinstance(self.header, dict):
             self.header = Jwe(**self.header)
 
-        self._cek, self._iv = None, None
+        self.recipient = recipient
+        self.cek = cek
+        self.iv = iv
 
     def provide_key(self, jwk, cek=None, iv=None, jwe=None):
         jwe = Jwe.merge(self.header, jwe)
@@ -145,26 +149,6 @@ class Recipient(BaseObject):
             _BD(self.encrypted_key))
         return self.cek
 
-    @property
-    def cek(self):
-        # CEK is not serizalied.
-        return self._cek
-
-    @cek.setter
-    def cek(self, value):
-        # CEK is not serizalied.
-        self._cek = value
-
-    @property
-    def iv(self):
-        # IV is not serizalied.
-        return self._iv
-
-    @iv.setter
-    def iv(self, value):
-        # IV is not serizalied.
-        self._iv = value
-
 
 class Message(CryptoMessage):
     '''  Encryptoed Message Container
@@ -180,10 +164,12 @@ class Message(CryptoMessage):
         recipients=[],      # array of Recipient
     )
 
+    _excludes = ['cek', ]
+
     def __init__(self, plaintext=None, *args, **kwargs):
         self._protected = Jwe()  # `protected` cache as Jwe object
         self._plaintext = plaintext
-        self._cek = None
+        self.cek = None
 
         super(Message, self).__init__(*args, **kwargs)
 
@@ -252,25 +238,12 @@ class Message(CryptoMessage):
             self.cek, plaint, _BD(self.iv), auth_data)
         return (ciphert, tag)
 
-    def decrypt(self):
-        header = self.header()           # Two Jwe headered are merged.
-        plaint, is_valid = header.enc.encryptor.decrypt(
-            self.cek,
-            _BD(self.ciphertext),
-            _BD(self.iv),
-            self.auth_data,
-            _BD(self.tag))
-
-        # TODO: is_valid == False, raise execption
-
-        return self.zip(plaint, unzip=True)
-
-    def add_recipient(self, recipient, receiver):
+    def add_recipient(self, recipient):
         ''' before call, recipient has to be provided with
             messsage's CEK and IV
         '''
         header = self.header(jwe=recipient.header)
-        key = header.load_key(receiver)
+        key = header.load_key(recipient.recipient)
 
         if len(self.recipients) < 1:
             #: Provide CEK & IV
@@ -285,26 +258,40 @@ class Message(CryptoMessage):
 
         self.recipients.append(recipient)
 
-    def find_cek(self, me=None):
+    def find_cek(self, jwk=None):
+        ''' force to use jwk '''
         header = self.header()
         for recipient in self.recipients:
-            me = me or self.receiver
-            jwk = self.header(jwe=recipient.header).load_key(me)
+            jwk = jwk or self.header(
+                jwe=recipient.header
+            ).load_key(recipient.recipient)
+
             if jwk:
                 #: key agreement fails if receiver is not me.
                 self.cek = recipient.agree_key(jwk, jwe=header)
                 return self.cek
         return None
 
-    @property
-    def cek(self):
-        # CEK is not serizalied.
-        return self._cek
+    def decrypt(self):
+        header = self.header()           # Two Jwe headered are merged.
+        plaint, is_valid = header.enc.encryptor.decrypt(
+            self.cek,
+            _BD(self.ciphertext),
+            _BD(self.iv),
+            self.auth_data,
+            _BD(self.tag))
 
-    @cek.setter
-    def cek(self, value):
-        # CEK is not serizalied.
-        self._cek = value
+        # TODO: is_valid == False, raise execption
+
+        return self.zip(plaint, unzip=True)
+
+    def get_plaintext(self, jwk=None):
+        #: If CEK has not been found
+        if not self.cek:
+            self.find_cek(jwk)
+
+        self._plaintext = self.decrypt()
+        return self._plaintext
 
     @property
     def plaintext(self):
@@ -312,13 +299,7 @@ class Message(CryptoMessage):
             # already decrypted and cached
             return self._plaintext
 
-        #: If CEK has not been found
-        if not self.cek:
-            self.find_cek()
-
-        self._plaintext = self.decrypt()
-
-        return self._plaintext
+        return self.decrypt()
 
     @plaintext.setter
     def plaintext(self, value):
@@ -334,8 +315,8 @@ class Message(CryptoMessage):
 
         try:
             message = cls.from_json(token)
-            message.sender = sender
-            message.receiver = receiver
+            for rec in message.recipients:
+                rec.recipient = receiver
             return message
 
         except ValueError:
@@ -350,6 +331,7 @@ class Message(CryptoMessage):
             m = _compact.search(token).groupdict()
             header = Jwe.from_b64u(m.get('header', None))
             recipient = dict(
+                recipient=receiver,
                 header=header,
                 encrypted_key=m.get('encrypted_key', None),
             )
@@ -361,8 +343,8 @@ class Message(CryptoMessage):
                 recipients=[recipient]
             )
 
-            message.sender = sender
-            message.receiver = receiver
+#            message.sender = sender
+#            message.receiver = receiver
             return message
 
         except Exception, e:

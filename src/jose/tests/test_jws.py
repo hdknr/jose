@@ -410,6 +410,7 @@ class TestJwsMessage(unittest.TestCase):
             msg = Message(
                 payload=plaintext, sender=signer)
             msg.add_signature(
+                sender=signer,
                 protected=Jws(alg=alg, kid=None, jku=jku),
                 header=Jws(typ="text"),
             )
@@ -433,6 +434,7 @@ class TestJwsMessage(unittest.TestCase):
                 signer, jku, alg.key_type, kid=None,)
 
             msg.add_signature(
+                sender=signer,
                 protected=Jws(alg=alg, kid=None, jku=jku),
                 header=Jws(typ="text"),
             )
