@@ -3,7 +3,6 @@ from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 from Crypto.Util.strxor import strxor
 from struct import pack
 from jose import BaseContentEncryptor
-from jose.utils import _BE
 
 slice = lambda s, n: [s[i:i + n] for i in range(0, len(s), n)]
 AES_IV = b'\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6'
@@ -155,6 +154,8 @@ class AesContentEncrypor(BaseContentEncryptor):
 
     @classmethod
     def unpack_key(cls, cek):
+        assert cek
+        assert len(cek) == cls._MAC_KEY_LEN + cls._ENC_KEY_LEN
         return (
             cek[:cls._MAC_KEY_LEN],
             cek[-1 * cls._ENC_KEY_LEN:]
@@ -178,7 +179,6 @@ class AesContentEncrypor(BaseContentEncryptor):
         ci = AES.new(enc_k, AES.MODE_CBC, iv)
         ciphert = ci.encrypt(pkcs5_pad(plaint))
         tag = cls.make_tag(mac_k, ciphert, iv, aad)
-        print ">>>>>", cls, _BE(tag), len(tag)
 
         return (ciphert, tag)
 

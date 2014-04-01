@@ -262,18 +262,27 @@ class Message(CryptoMessage):
         ''' force to use jwk '''
         header = self.header()
         for recipient in self.recipients:
-            jwk = jwk or self.header(
-                jwe=recipient.header
-            ).load_key(recipient.recipient)
-
+            jwk = jwk or recipient.header.load_key(recipient.recipient)
             if jwk:
                 #: key agreement fails if receiver is not me.
                 self.cek = recipient.agree_key(jwk, jwe=header)
                 return self.cek
+            else:
+                #:TODO log
+                pass
+
         return None
 
-    def decrypt(self):
+    def decrypt(self, jwk=None):
+        if not self.cek:
+            self.find_cek(jwk)
+
         header = self.header()           # Two Jwe headered are merged.
+        assert self.cek
+        assert self.ciphertext
+        assert self.iv
+        assert self.tag
+
         plaint, is_valid = header.enc.encryptor.decrypt(
             self.cek,
             _BD(self.ciphertext),
@@ -287,6 +296,7 @@ class Message(CryptoMessage):
 
     def get_plaintext(self, jwk=None):
         #: If CEK has not been found
+
         if not self.cek:
             self.find_cek(jwk)
 
@@ -305,6 +315,9 @@ class Message(CryptoMessage):
     def plaintext(self, value):
         # CEK is not serizalied.
         self._plaintext = value
+
+    def text(self):
+        return self.plaintext
 
     @classmethod
     def from_token(cls, token, sender, receiver):
@@ -327,11 +340,20 @@ class Message(CryptoMessage):
             print ">>>>>>", type(e)
             print traceback.format_exc()
 
+        return cls.parse_token(token, sender, receiver)
+
+    @classmethod
+    def parse_token(cls, token, sender, recipient):
+        '''
+            :param token: Compact Serialization
+            :param str sender: Message sender identifier
+        '''
+
         try:
             m = _compact.search(token).groupdict()
             header = Jwe.from_b64u(m.get('header', None))
             recipient = dict(
-                recipient=receiver,
+                recipient=recipient,
                 header=header,
                 encrypted_key=m.get('encrypted_key', None),
             )
@@ -342,9 +364,7 @@ class Message(CryptoMessage):
                 ciphertext=m.get('ciphertext', None),
                 recipients=[recipient]
             )
-
-#            message.sender = sender
-#            message.receiver = receiver
+            assert len(message.recipients) == 1
             return message
 
         except Exception, e:

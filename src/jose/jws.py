@@ -139,6 +139,9 @@ class Message(CryptoMessage):
                     sigs.append(sig)
             self.signatures = sigs
 
+    def header(self, index=0):
+        return self.signatures[index].all_header()
+
     def add_signature(self, sender=None, protected=None, header=None):
         signature = Signature(
             sender=sender,
@@ -147,6 +150,9 @@ class Message(CryptoMessage):
         jwk = signature.load_key()
         signature.sign(self.payload, jwk)
         self.signatures.append(signature)
+
+    def text(self):
+        return _BD(self.payload)
 
     @classmethod
     def from_token(cls, token, sender=None, receiver=None):
@@ -168,6 +174,15 @@ class Message(CryptoMessage):
         except Exception, e:
             print ">>>>>>", type(e)
             print traceback.format_exc()
+
+        return cls.parse_token(token, sender, receiver)
+
+    @classmethod
+    def parse_token(cls, token, sender=None, recipient=None):
+        '''
+            :param token: Serialized Jws (JSON or Compact)
+            :param str sender: Message sender identifier
+        '''
 
         try:
             m = _compact.search(token).groupdict()

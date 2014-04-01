@@ -29,6 +29,7 @@ class Crypto(BaseObject):
         '''
             :param str owner: Owner identifier
         '''
+
         # If pair wise keyset is required,
         # `jku` MUST include both parties identity.
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
@@ -69,6 +70,16 @@ class CryptoMessage(BaseObject):
         ''' kwargs can contain named args to json.dumps
         '''
         raise NotImplemented()
+
+    def header(self, index=0):
+        raise NotImplemented
+
+    def text(self):
+        raise NotImplemented
+
+    @classmethod
+    def parse_token(cls, sender, recipient):
+        raise NotImplemented
 
 
 def parse_message(token_or_json, sender, receiver):
