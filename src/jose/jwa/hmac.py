@@ -4,8 +4,11 @@ from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 class HmacSigner(object):
     @classmethod
     def digest(cls, jwk, data):
-        mac = HMAC.new(jwk.key.shared_key,
-                       digestmod=cls._digester)
+        if isinstance(jwk, basestring):
+            key = jwk
+        else:
+            key = jwk.key.shared_key
+        mac = HMAC.new(key, digestmod=cls._digester)
         mac.update(data)
         return mac.digest()
 
