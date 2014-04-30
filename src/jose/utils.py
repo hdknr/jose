@@ -63,4 +63,8 @@ _LBE = base64.long_to_b64
 _LBD = base64.long_from_b64
 
 nonce = lambda prefix='': \
-    prefix + struct.pack('!d', time.time()).encode('hex')
+    prefix + base64.base64url_encode(struct.pack('!d', time.time()))
+
+if __name__ == '__main__':
+    print nonce()
+    pass
