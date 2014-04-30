@@ -6,6 +6,7 @@ import json
 from enum import Enum
 import os
 from jose.utils import import_class, base64
+from urllib import urlencode
 
 
 def get_version():
@@ -81,6 +82,9 @@ class BaseObject(object):
         return json.loads(
             self.to_json(*args, **kwargs))
 
+    def to_qs(self, *args, **kwargs):
+        return urlencode(self.to_dict(*args, **kwargs))
+
     @classmethod
     def merge(cls, *obj):
         vals = cls._fields.copy()
@@ -104,13 +108,17 @@ class BaseObject(object):
     def from_b64u(cls, b64_str, base=None):
         return cls.from_json(base64.base64url_decode(b64_str), base)
 
-    def save(self, entity_id="me", id=None, *args, **kwargs):
-        conf.store.save(self, entity_id, id, *args, **kwargs)
+    def save(self, owner, id=None, *args, **kwargs):
+        ''' owner  - object or identifier
+        '''
+        conf.store.save(self, owner, id, *args, **kwargs)
 
     @classmethod
-    def load(cls, entity_id="me", id=None, *args, **kwargs):
+    def load(cls, owner, id=None, *args, **kwargs):
+        ''' owner  - object or identifier
+        '''
         try:
-            return conf.store.load(cls, entity_id, id, *args, **kwargs)
+            return conf.store.load(cls, owner, id, *args, **kwargs)
         except:
             return None
 

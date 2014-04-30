@@ -304,7 +304,7 @@ class TestJweMessage(unittest.TestCase):
 
     def test_multi(self):
 
-        payload = "Everybody wants to rule the world."
+        payload = "All you need is love."
 
         enc = EncEnum.all()[0]
 

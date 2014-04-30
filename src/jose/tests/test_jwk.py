@@ -29,9 +29,9 @@ class TestJwk(unittest.TestCase):
         jwkset.keys.append(Jwk(kid='kidRsa', kty=keys.KeyTypeEnum.RSA))
         jwkset.keys.append(Jwk(kid='kidEc', kty=keys.KeyTypeEnum.EC))
         jwkset.keys.append(Jwk(kid='kidOct', kty=keys.KeyTypeEnum.OCT))
-        jwkset.save()
+        jwkset.save('owner')
 
-        jwkset2 = JwkSet.load()
+        jwkset2 = JwkSet.load('owner')
         self.assertEqual(jwkset2.get_key(kty=KeyTypeEnum.RSA).kid, 'kidRsa')
         self.assertEqual(jwkset2.get_key(kty=KeyTypeEnum.EC).kid, 'kidEc')
         self.assertEqual(jwkset2.get_key(kty=KeyTypeEnum.OCT).kid, 'kidOct')
@@ -40,7 +40,7 @@ class TestJwk(unittest.TestCase):
         jwkset3.keys.append(Jwk.generate(kty=KeyTypeEnum.OCT))
         jwkset3.keys.append(Jwk.generate(kty=KeyTypeEnum.RSA))
         jwkset3.keys.append(Jwk.generate(kty=KeyTypeEnum.EC))
-        jwkset3.save()
+        jwkset3.save('owner')
 
 
 if __name__ == '__main__':
