@@ -58,6 +58,15 @@ class JWS_A1:
     }
     sig_b64 = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
+    token = ''.join([
+        "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9",
+        ".",
+        "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFt",
+        "cGxlLmNvbS9pc19yb290Ijp0cnVlfQ",
+        ".",
+        "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+    ])
+
 
 class JWS_A2:
     header_oct = [

@@ -5,7 +5,7 @@ class Jwt(BaseObject):
     _fields = dict(
         iss=None,
         sub=None,
-        aud=None,
+        aud=None,       # Audient: list(str) or str
         exp=None,
         nbf=None,
         iat=None,
