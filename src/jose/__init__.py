@@ -7,6 +7,7 @@ from enum import Enum
 import os
 from jose.utils import import_class, base64
 from urllib import urlencode
+import urlparse
 
 
 def get_version():
@@ -103,6 +104,13 @@ class BaseObject(object):
         with open(json_file) as data:
             obj = base(** json.load(data))
         return obj
+
+    @classmethod
+    def from_url(cls, url, base=None):
+        base = base or cls
+        return cls(
+            **dict(urlparse.parse_qsl(urlparse.urlparse(url).query))
+        )
 
     @classmethod
     def from_b64u(cls, b64_str, base=None):
