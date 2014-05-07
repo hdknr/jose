@@ -169,7 +169,7 @@ class JwkSet(BaseObject):
                     new_keys.append(Jwk(**key))
             self.keys = new_keys
 
-    def get_key(self, kty, kid=None):
+    def get_key(self, kty, kid=None, x5t=None):
         if not isinstance(self.keys, list) or len(self.keys) == 0:
             return None
 
@@ -177,14 +177,16 @@ class JwkSet(BaseObject):
             if key.kty == kty:
                 if not kid or key.kid == kid:
                     return key
+                if not x5t or key.x5t == x5t:
+                    return key
         return None
 
     def add_key(self, jwk):
         self.delete_key(jwk.kty, jwk.kid)
         self.keys.append(jwk)
 
-    def delete_key(self, jwk=None, kty=None, kid=None):
-        jwk = jwk or self.get(kty, kid)
+    def delete_key(self, jwk=None, kty=None, kid=None, x5t=None):
+        jwk = jwk or self.get_key(kty, kid, x5t)
         if jwk:
             self.keys = [key for key in self.keys if key != jwk]
 

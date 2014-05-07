@@ -34,7 +34,7 @@ class Crypto(BaseObject):
         # `jku` MUST include both parties identity.
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
         keyset = JwkSet.load(owner, self.jku) or JwkSet()
-        return keyset.get_key(self.alg.key_type, self.kid)
+        return keyset.get_key(self.alg.key_type, self.kid, self.x5t)
 
     def set_value(self, key, value):
         if key in self._fields and value:

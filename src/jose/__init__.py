@@ -126,8 +126,10 @@ class BaseObject(object):
         ''' owner  - object or identifier
         '''
         try:
-            return conf.store.load(cls, owner, id, *args, **kwargs)
-        except:
+            ret = conf.store.load(cls, owner, id, *args, **kwargs)
+            return ret
+        except Exception, ex:
+            print ex
             return None
 
 

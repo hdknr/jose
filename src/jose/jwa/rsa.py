@@ -31,6 +31,10 @@ def generate_key(bits=1024):
     return RSA.generate(bits)
 
 
+def import_pem(pem):
+    return RSA.importKey(pem)
+
+
 class Key(BaseKey):
 
     def init_material(self, length=2048, **kwargs):
@@ -59,12 +63,18 @@ class Key(BaseKey):
                     jwk.d, jwk.p, jwk.q, jwk.qi,
                 ]]
             )
-        else:
-            self.material = public_construct(
-                *[_LBD(i) for i in [
-                    jwk.n, jwk.e,
-                ]]
-            )
+        elif jwk.n and jwk.e:
+                self.material = public_construct(
+                    *[_LBD(i) for i in [
+                        jwk.n, jwk.e,
+                    ]]
+                )
+        elif jwk.x5c and len(jwk.x5c) > 0:
+            pem = "\n".join([
+                "-----BEGIN CERTIFICATE-----",
+                jwk.x5c[0],
+                "-----END CERTIFICATE-----"])
+            self.material = import_pem(pem)
 
     @property
     def public_tuple(self):
