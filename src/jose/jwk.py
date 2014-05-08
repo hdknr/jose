@@ -1,4 +1,4 @@
-from jose import conf, BaseEnum, BaseObject
+from jose.base import conf, BaseEnum, BaseObject
 from jose.jwa import keys        # , Algorithm
 from jose.utils import merged
 #

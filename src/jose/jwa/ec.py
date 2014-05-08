@@ -1,4 +1,4 @@
-from jose import BaseKey, BaseKeyEncryptor
+from jose.base import BaseKey, BaseKeyEncryptor
 from jose.utils import base64
 from jose.jwk import Jwk
 from jose.jwa.aes import A128KW, A192KW, A256KW

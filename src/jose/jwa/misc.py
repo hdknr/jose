@@ -1,4 +1,4 @@
-from jose import BaseKeyEncryptor
+from jose.base import BaseKeyEncryptor
 
 
 class NONE(object):

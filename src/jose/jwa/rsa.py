@@ -8,7 +8,7 @@ from Crypto.Cipher import (
 from Crypto import Random
 #
 from jose.utils import base64, _BD, _LBE, _LBD
-from jose import BaseKey, BaseKeyEncryptor
+from jose.base import BaseKey, BaseKeyEncryptor
 from jose.jwk import Jwk
 from jose.jwa import keys
 
@@ -249,6 +249,7 @@ class RSA_OAEP(RsaKeyEncryptor):
 
     @classmethod
     def decrypt(cls, jwk, cek_ci, *args, **kwargs):
+        print ">>>>>", cek_ci
         return cls._cipher.new(jwk.key.private_key).decrypt(cek_ci)
 
 if __name__ == '__main__':

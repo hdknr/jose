@@ -1,4 +1,4 @@
-from jose import BaseEnum
+from jose.base import BaseEnum
 
 # kty
 

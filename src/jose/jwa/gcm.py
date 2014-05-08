@@ -1,6 +1,6 @@
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 from aes_gcm import AES_GCM, InvalidTagException
-from jose import BaseContentEncryptor, BaseKeyEncryptor
+from jose.base import BaseContentEncryptor, BaseKeyEncryptor
 from jose.utils import base64, _BE, _BD
 
 

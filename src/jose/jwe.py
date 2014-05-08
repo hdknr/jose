@@ -1,6 +1,6 @@
 from crypto import Crypto, CryptoMessage
 from jose.jwa.encs import EncEnum, KeyEncEnum
-from jose import BaseEnum, BaseObject
+from jose.base import BaseEnum, BaseObject
 from jose.jwk import Jwk
 from jose.utils import merged, _BD, _BE
 import re

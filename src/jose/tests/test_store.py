@@ -13,7 +13,7 @@ class TestStore(unittest.TestCase):
         fs.save(jwk)
 
     def test_conf(self):
-        from jose import conf
+        from jose.base import conf
         jwk = Jwk()
         conf.store.save(jwk)
 

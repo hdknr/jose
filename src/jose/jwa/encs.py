@@ -1,4 +1,4 @@
-from jose import AlgorithmBaseEnum, BaseEnum
+from jose.base import AlgorithmBaseEnum, BaseEnum
 from jose.jwa import keys
 #
 

@@ -2,7 +2,7 @@ from Crypto.Cipher import AES
 from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 from Crypto.Util.strxor import strxor
 from struct import pack
-from jose import BaseContentEncryptor
+from jose.base import BaseContentEncryptor
 
 slice = lambda s, n: [s[i:i + n] for i in range(0, len(s), n)]
 AES_IV = b'\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6'
@@ -75,7 +75,7 @@ def aes_key_unwrap(K, C):
 
 ### Key Encryption
 
-from jose import BaseKeyEncryptor
+from jose.base import BaseKeyEncryptor
 
 
 class AesKeyEncryptor(BaseKeyEncryptor):

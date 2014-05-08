@@ -1,4 +1,4 @@
-from jose import BaseObject
+from jose.base import BaseObject
 from jose.utils import merged
 from jose.jwk import JwkSet
 

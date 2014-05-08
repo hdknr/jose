@@ -1,4 +1,4 @@
-from jose import AlgorithmBaseEnum
+from jose.base import AlgorithmBaseEnum
 from jose.jwa import keys
 
 __all__ = ['SigDict', 'SigEnum', ]

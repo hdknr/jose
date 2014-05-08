@@ -1,5 +1,5 @@
 import os
-from utils import import_class
+from jose.utils import import_class
 import time
 import struct
 

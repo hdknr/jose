@@ -9,7 +9,7 @@
 from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 from Crypto import Random
 from pbkdf2 import PBKDF2
-from jose import BaseKeyEncryptor
+from jose.base import BaseKeyEncryptor
 from jose.jwa.aes import A128KW, A192KW, A256KW
 from jose.utils import base64, _BD, _BE
 

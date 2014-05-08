@@ -1,4 +1,4 @@
-from jose import AlgorithmBaseEnum
+from jose.base import AlgorithmBaseEnum
 from encs import KeyEncDict
 from sigs import SigDict
 

@@ -1,5 +1,5 @@
 from crypto import Crypto, CryptoMessage
-from jose import BaseObject
+from jose.base import BaseObject, JoseException
 from jose.utils import base64, _BD
 from jose.jwa.sigs import SigEnum
 import re
@@ -31,9 +31,15 @@ class Jws(Crypto):
 
     def verify(self, signing_input, signature, jwk):
         #: TODO: load key from store if signing_jwk  is None
-        assert jwk
-        assert signing_input
-        assert self.alg == SigEnum.NONE or signature is not None
+
+        if not jwk:
+            raise JoseException("no jwk", self)
+
+        if not signing_input: 
+            raise JoseException("no signin input", self, signing_input, signature, jwk)
+
+        if self.alg == SigEnum.NONE and signature is not None: 
+            raise JoseException("none but signature specified", self, signing_input, signature, jwk)
 
         signer = self.alg.signer
         return signer.verify(jwk, signing_input, signature)

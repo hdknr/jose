@@ -35,7 +35,7 @@ class HS512(HmacSigner):
     _digester = SHA512
 
 
-from jose import BaseKey
+from jose.base import BaseKey
 from jose.utils import _BE, _BD
 from jose.jwk import Jwk
 from Crypto import Random

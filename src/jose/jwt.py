@@ -1,4 +1,4 @@
-from jose import BaseObject
+from jose.base import BaseObject
 
 
 class Jwt(BaseObject):

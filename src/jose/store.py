@@ -3,9 +3,22 @@
 '''
 import os
 import urllib
-from jose import BaseStore
 import requests
 
+
+class BaseStore(object):
+    def __init__(self, conf, *args, **kwargs):
+        self.conf = conf
+
+    def save(self, obj, entity_id="me", id=None, *args, **kwargs):
+        ''' Can can provide many backend based on type(obj)
+        '''
+        pass
+
+    def load(self, obj_class, entity_id="me", id=None, *args, **kwargs):
+        ''' Can can provide many backend based on obj_class
+        '''
+        pass
 
 class FileStore(BaseStore):
     def __init__(self, conf, base=None):
