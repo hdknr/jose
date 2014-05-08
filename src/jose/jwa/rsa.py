@@ -249,7 +249,6 @@ class RSA_OAEP(RsaKeyEncryptor):
 
     @classmethod
     def decrypt(cls, jwk, cek_ci, *args, **kwargs):
-        print ">>>>>", cek_ci
         return cls._cipher.new(jwk.key.private_key).decrypt(cek_ci)
 
 if __name__ == '__main__':
