@@ -4,7 +4,7 @@ import os
 from jose.utils import import_class, base64
 from urllib import urlencode
 import urlparse
-
+import traceback
 
 
 class JoseException(Exception):
@@ -56,10 +56,9 @@ class BaseObject(object):
         self.set_values(self._fields, kwargs)
 
     def __getitem__(self, key):
-        try:
-            return super(BaseObject, self).__getitem__(key)
-        except:
-            return self._customs.get(key, None)
+        return getattr(
+            self, key,
+            self._customs.get(key, None))
 
     def __setitem__(self, key, val):
         self._customs[key] = val
