@@ -1,6 +1,9 @@
 from jose.base import BaseObject
-from jose.utils import merged
+from jose.utils import merged, _BD
 from jose.jwk import JwkSet
+from jose.jwa.sigs import SigEnum
+from jose.jwa.encs import KeyEncEnum
+
 
 _crypto_fields = dict(
     alg=None,      #: Algorithm (KeyEncEnum, SigEnum)
@@ -25,6 +28,11 @@ class Crypto(BaseObject):
         _key_hint_fields,
     ])
 
+    def __init__(self, **kwargs):
+        super(Crypto, self).__init__(**kwargs)
+        if isinstance(self.alg, basestring):
+            self.alg = SigEnum.create(self.alg) or KeyEncEnum(self.alg)
+
     def load_key(self, owner):
         '''
             :param str owner: Owner identifier
@@ -39,6 +47,12 @@ class Crypto(BaseObject):
     def set_value(self, key, value):
         if key in self._fields and value:
             setattr(self, key, value)
+
+    
+    @classmethod
+    def from_token(cls, token):
+        return cls.from_json(_BD(token.split('.')[0]))
+       
 
 
 class CryptoMessage(BaseObject):

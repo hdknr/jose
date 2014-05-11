@@ -1,4 +1,6 @@
 from jose.base import BaseObject
+from jose.utils import _BD
+from jose.crypto import Crypto
 
 
 class Jwt(BaseObject):
@@ -14,6 +16,10 @@ class Jwt(BaseObject):
 
     def __init__(self, **kwargs):
         super(Jwt, self).__init__(**kwargs)
+
+    @classmethod
+    def header(cls, token):
+        return Crypto.from_token(token)
 
     @classmethod
     def parse(cls, token, sender, recipient):

@@ -195,7 +195,7 @@ class Message(CryptoMessage):
             obj = cls(signatures=[Signature(sender=sender, **m)], **m)
             return obj
         except Exception, e:
-            print ">>>>>>", type(e)
+            print ">>>>>> jws.Message.parse_token", type(e)
             print traceback.format_exc()
 
         return None

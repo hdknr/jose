@@ -173,13 +173,16 @@ class JwkSet(BaseObject):
         if not isinstance(self.keys, list) or len(self.keys) == 0:
             return None
 
+        default = None
         for key in self.keys:
             if key.kty == kty:
-                if not kid or key.kid == kid:
+                if default is None:
+                    default = key
+                if kid and key.kid == kid:
                     return key
-                if not x5t or key.x5t == x5t:
+                if x5t and key.x5t == x5t:
                     return key
-        return None
+        return default
 
     def add_key(self, jwk):
         self.delete_key(jwk.kty, jwk.kid)

@@ -167,7 +167,7 @@ class RsaSigner(object):
         dig = cls._digester.new(data)
         verifier = cls._signer.new(jwk.key.public_key)
         try:
-            return 1 == verifier.verify(dig, signature)
+            return verifier.verify(dig, signature)
         except:
             return False
 
