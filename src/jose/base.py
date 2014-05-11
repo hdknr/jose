@@ -56,7 +56,10 @@ class BaseObject(object):
         self.set_values(self._fields, kwargs)
 
     def __getitem__(self, key):
-        return self._customs.get(key, None)
+        try:
+            return super(BaseObject, self).__getitem__(key)
+        except:
+            return self._customs.get(key, None)
 
     def __setitem__(self, key, val):
         self._customs[key] = val
