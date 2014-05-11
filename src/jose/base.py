@@ -93,9 +93,10 @@ class BaseObject(object):
         return cls(**vals)
 
     @classmethod
-    def from_json(cls, json_str, base=None):
+    def from_json(cls, json_str, base=None, **kwargs):
         base = base or cls
-        obj = base(**json.loads(json_str))
+        kwargs.update(json.loads(json_str))
+        obj = base(**kwargs)
         return obj
 
     @classmethod

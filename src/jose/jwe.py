@@ -1,11 +1,12 @@
 from crypto import Crypto, CryptoMessage
 from jose.jwa.encs import EncEnum, KeyEncEnum
-from jose.base import BaseEnum, BaseObject
+from jose.base import BaseEnum, BaseObject, JoseException
 from jose.jwk import Jwk
 from jose.utils import merged, _BD, _BE
 import re
 import traceback
 import zlib
+import exceptions
 
 # http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption-23#section-7.1
 _component = [
@@ -17,6 +18,10 @@ _component = [
 ]
 
 _compact = re.compile('\.'.join(_component))
+
+
+class NotJweException(JoseException):
+    pass
 
 
 class ZipEnum(BaseEnum):
@@ -349,29 +354,28 @@ class Message(CryptoMessage):
             :param str sender: Message sender identifier
         '''
 
+        m = {}
         try:
             m = _compact.search(token).groupdict()
-            header = Jwe.from_b64u(m.get('header', None))
-            recipient = dict(
-                recipient=recipient,
-                header=header,
-                encrypted_key=m.get('encrypted_key', None),
-            )
-            message = Message(
-                protected=m.get('header', None),
-                iv=m.get('iv', None),
-                tag=m.get('tag', None),
-                ciphertext=m.get('ciphertext', None),
-                recipients=[recipient]
-            )
-            assert len(message.recipients) == 1
-            return message
+        except exceptions.AttributeError:
+            raise NotJweException(
+                'Token is not JWE', None, token, sender, recipient)
 
-        except Exception, e:
-            print ">>>>>>", type(e)
-            print traceback.format_exc()
-
-        return None
+        header = Jwe.from_b64u(m.get('header', None))
+        recipient = dict(
+            recipient=recipient,
+            header=header,
+            encrypted_key=m.get('encrypted_key', None),
+        )
+        message = Message(
+            protected=m.get('header', None),
+            iv=m.get('iv', None),
+            tag=m.get('tag', None),
+            ciphertext=m.get('ciphertext', None),
+            recipients=[recipient]
+        )
+        assert len(message.recipients) == 1
+        return message
 
     def serialize_json(self, **kwargs):
         assert self.iv

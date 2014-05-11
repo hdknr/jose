@@ -95,6 +95,9 @@ class CryptoMessage(BaseObject):
     def parse_token(cls, sender, recipient):
         raise NotImplemented
 
+    def veirfy(self):
+        return False
+
 
 def parse_message(token_or_json, sender, receiver):
     from jws import Jws
