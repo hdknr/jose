@@ -41,7 +41,7 @@ class Crypto(BaseObject):
         # If pair wise keyset is required,
         # `jku` MUST include both parties identity.
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
-        keyset = JwkSet.load(owner, self.jku) or JwkSet()
+        keyset = JwkSet.load(owner, self.jku, kid=self.kid, x5t=self.x5t) or JwkSet()
         return keyset.get_key(self.alg.key_type, self.kid, self.x5t)
 
     def set_value(self, key, value):
