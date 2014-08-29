@@ -2,9 +2,15 @@ import json
 from enum import Enum
 import os
 from jose.utils import import_class, base64
-from urllib import urlencode
+from urllib import quote
 import urlparse
 import traceback
+
+
+def urlencode(kwargs):
+    return "&".join(
+        "%s=%s" % (k, quote(v)) for k, v in kwargs.items()
+    )
 
 
 class JoseException(Exception):
