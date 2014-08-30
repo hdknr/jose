@@ -5,6 +5,7 @@ from jose.utils import import_class, base64
 from urllib import quote
 import urlparse
 import traceback
+from datetime import datetime
 
 
 def urlencode(kwargs):
@@ -38,6 +39,8 @@ class BaseObjectSerializer(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Enum):
             return obj.value
+        if isinstance(obj, datetime):
+            return obj.isoformat()
         if isinstance(obj, object):
             #: instance as dict
             ex = isinstance(obj, BaseObject) and obj._excludes or []
