@@ -23,9 +23,10 @@ def public_construct(n, e):
     return RSA.RSAImplementation().construct((n, e,))
 
 
-def private_construct(n, e, d, p, q, u):
+def private_construct(n, e, d, p=None, q=None, u=None):
+    if p is None or p == 0:
+        return RSA.RSAImplementation().construct((n, e, d))
     return RSA.RSAImplementation().construct((n, e, d, p, q, u,))
-
 
 def generate_key(bits=1024):
     return RSA.generate(bits)
@@ -87,6 +88,9 @@ class Key(BaseKey):
     def private_tuple(self):
         if self.material is None or self.is_public:
             return ()
+
+        if self.material.p is None:
+            return (self.material.n, self.material.e, self.material.d,)
 
         return (self.material.n, self.material.e,
                 self.material.d, self.material.p,

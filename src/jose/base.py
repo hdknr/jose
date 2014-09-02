@@ -128,21 +128,21 @@ class BaseObject(object):
     def from_b64u(cls, b64_str, base=None):
         return cls.from_json(base64.base64url_decode(b64_str), base)
 
-    def save(self, owner, id=None, *args, **kwargs):
-        ''' owner  - object or identifier
-        '''
-        conf.store.save(self, owner, id, *args, **kwargs)
+#    def save(self, owner, id=None, *args, **kwargs):
+#        ''' owner  - object or identifier
+#        '''
+#        conf.store.save(self, owner, id, *args, **kwargs)
 
-    @classmethod
-    def load(cls, owner, id=None, *args, **kwargs):
-        ''' owner  - object or identifier
-        '''
-        try:
-            ret = conf.store.load(cls, owner, id, *args, **kwargs)
-            return ret
-        except Exception, ex:
-            print ex
-            return None
+#    @classmethod
+#    def load(cls, owner, id=None, *args, **kwargs):
+#        ''' owner  - object or identifier
+#        '''
+#        try:
+#            ret = conf.store.load(cls, owner, id, *args, **kwargs)
+#            return ret
+#        except Exception, ex:
+#            print ex
+#            return None
 
 
 class AlgorithmBaseEnum(BaseEnum):
@@ -218,11 +218,11 @@ class BaseContentEncryptor(object):
         return cls._KEY_LEN
 
 
-def load_configuration_instance():
-    settings_class = os.environ.get(
-        'JOSE_CONFIGURATION_CLASS',
-        'jose.configurations.Configuration')
-    return import_class(settings_class)()
-
-
-conf = load_configuration_instance()
+#def load_configuration_instance():
+#    settings_class = os.environ.get(
+#        'JOSE_CONFIGURATION_CLASS',
+#        'jose.configurations.Configuration')
+#    return import_class(settings_class)()
+#
+#
+#conf = load_configuration_instance()

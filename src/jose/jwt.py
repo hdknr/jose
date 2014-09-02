@@ -61,6 +61,7 @@ class Jwt(BaseObject):
     def parse(cls, token, sender, recipient):
         from jose.jwe import Message as JweMessage, NotJweException
         from jose.jws import Message as JwsMessage
+
         parts = token.split('.')
         if len(parts) < 2:
             # TODO: Define exception

@@ -38,8 +38,10 @@ class Jws(Crypto):
         if not signing_input: 
             raise JoseException("no signin input", self, signing_input, signature, jwk)
 
-        if self.alg == SigEnum.NONE and signature is not None: 
-            raise JoseException("none but signature specified", self, signing_input, signature, jwk)
+        if self.alg == SigEnum.NONE and signature:
+            raise JoseException(
+                "none but signature specified", 
+                self, signing_input, signature, jwk)
 
         signer = self.alg.signer
         return signer.verify(jwk, signing_input, signature)
@@ -130,7 +132,7 @@ class Signature(BaseObject):
 
 class Message(CryptoMessage):
     _fields = dict(
-        payload='',     # Base64url(Jws Payload
+        payload='',     # Base64url(Jws Payload)
         signatures=[],  # array of Signature
     )
 
@@ -213,6 +215,7 @@ class Message(CryptoMessage):
         for sig in self.signatures:
             jwk = sig.load_key()
             ret = ret and sig.verify(self.payload, jwk)
+
         return ret
 
     def serialize_json(self, jwk=None, **kwargs):

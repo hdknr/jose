@@ -2,7 +2,7 @@
 
 import unittest
 
-from jose.jwk import Jwk
+from jose.jwk import Jwk, JwkSet
 from jose.jwe import Jwe, ZipEnum, Message, Recipient
 from jose.jwa.encs import KeyEncEnum, EncEnum
 from jose.jwa.keys import KeyTypeEnum
@@ -11,11 +11,23 @@ import traceback
 from jose.tests import (
     JWE_A2, JWE_A3, JWE_B,
 )
+from jose.crypto import KeyOwner
 
 _S = lambda o: ''.join([chr(i) for i in o])
 _BE = lambda s: base64.base64url_encode(s)
 _BD = lambda s: base64.base64url_decode(s)
 
+
+class TestEntity(KeyOwner):
+    def __init__(self, identifier, jku, jwkset):
+        self.identifier = identifier 
+        self.jwkset = jwkset
+        self.jku = jku
+
+    def get_key(self, crypto, *args, **kwargs):
+        return self.jwkset.get_key(
+            crypto.key_type, kid=crypto.kid
+        ) 
 
 class TestJwe(unittest.TestCase):
 
@@ -203,19 +215,26 @@ class TestJweMessage(unittest.TestCase):
         return message
 
     def _create_jwk(self, owner, jku, alg):
-        jwk = Jwk.get_or_create_from(
-            owner, jku, alg.key_type, kid=None)
+        #        jwk = Jwk.get_or_create_from(
+        #         owner, jku, alg.key_type, kid=None)
+        jwk = Jwk.generate(alg.key_type)
         return jwk
 
     def test_message_rsakw(self):
-        receiver = "http://test.rsa.com"
+        
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+#        receiver = "http://test.rsa.com"
+#        jku = receiver + '/jwkset'
+        receiver =  TestEntity(
+            identifier="http://test.rsa.com",
+            jku= "http://test.rsa.com/jwkset",
+            jwkset=JwkSet()
+        )
 
         for alg in [KeyEncEnum.RSA1_5, KeyEncEnum.RSA_OAEP]:
-            self.assertEqual(
-                self._create_jwk(receiver, jku, alg).kty,
-                KeyTypeEnum.RSA)
+            jwk = self._create_jwk(receiver, jku, alg)
+            self.assertEqual(jwk, KeyTypeEnum.RSA)
+            reciever.jwkset.keys.append(jwk)
 
             for enc in EncEnum.all():
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)

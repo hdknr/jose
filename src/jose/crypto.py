@@ -12,6 +12,12 @@ _crypto_fields = dict(
     crit=None,     #: Critical
 )
 
+# Key Identification
+# - https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-28#section-6
+# - https://tools.ietf.org/html/draft-ietf-jose-json-web-encryption-30#section-6
+#
+# 'x5t#S256' is stored in _customs dict and can be accessed thru obj['x5t#S256']
+
 _key_hint_fields = dict(
     jku=None,      #: Uri to hosted JwkSet
     jwk=None,      #: Jwk
@@ -20,6 +26,14 @@ _key_hint_fields = dict(
     x5c=None,      #: array of base64url DER X.509 Certificate
     x5t=None,      #: Thumprint of X.509 Certificate
 )
+
+
+class KeyOwner(object):
+    def get_key(self, crypto, *args, **kwargs):  # Crypto instance
+        raise NotImplemented()
+
+#    def set_key(self, jwkset, *args, **kwargs):
+#        raise NotImplemented()
 
 
 class Crypto(BaseObject):
@@ -35,28 +49,35 @@ class Crypto(BaseObject):
 
     def load_key(self, owner):
         '''
-            :param str owner: Owner identifier
+            :type sender: KeyOwner or None
         '''
 
         # If pair wise keyset is required,
         # `jku` MUST include both parties identity.
         # e.g.: https://company.com/jwkset/a_division/a_customer.jwkset
-        keyset = JwkSet.load(owner, self.jku, kid=self.kid, x5t=self.x5t) or JwkSet()
-        return keyset.get_key(self.alg.key_type, self.kid, self.x5t)
+        return owner.get_key(self)
+        #        keyset = JwkSet.load(owner, self.jku, kid=self.kid, x5t=self.x5t) or JwkSet()
+        #        return keyset.get_key(self.alg.key_type, self.kid, self.x5t)
 
     def set_value(self, key, value):
         if key in self._fields and value:
             setattr(self, key, value)
 
+    @property 
+    def key_type(self):
+        return self.alg.key_type
     
     @classmethod
     def from_token(cls, token):
         return cls.from_json(_BD(token.split('.')[0]))
-       
 
 
 class CryptoMessage(BaseObject):
     def __init__(self, sender=None, receiver=None, *args, **kwargs):
+        ''' 
+            :type sender: KeyOwner or None
+            :type receiver: KeyOwner or None
+        '''
         super(CryptoMessage, self).__init__(*args, **kwargs)
         self._sender = sender
         self._receiver = receiver
@@ -106,12 +127,3 @@ def parse_message(token_or_json, sender, receiver):
     crypto = Jws.from_token(token_or_json, sender, receiver) or \
         Jwe.from_token(token_or_json, sender, receiver)
     return crypto
-
-#def from_token(token, sender):
-#    from jws import Jws
-#    from jwe import Jwe
-#
-#    crypto = Jws.from_token(token) or \
-#        Jwe.from_token(token)
-#
-#    return crypto

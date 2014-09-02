@@ -3,16 +3,36 @@
 import unittest
 from jose.utils import base64, _BE
 
+from jose.crypto import KeyOwner
 from jose.jws import Jws, Message, Signature
 from jose.jwa.sigs import SigEnum, SigDict
 from jose.jwa.keys import KeyTypeEnum
 from jose.jwt import Jwt
-from jose.jwk import Jwk
+from jose.jwk import Jwk, JwkSet
+
+
+class TestEntity(KeyOwner):
+    def __init__(self, identifier, jku):
+        self.identifier = identifier 
+        self.jku = jku 
+        self.jwkset = JwkSet(
+            keys=[
+                Jwk.generate(KeyTypeEnum.RSA),
+                Jwk.generate(KeyTypeEnum.EC),
+                Jwk.generate(KeyTypeEnum.OCT),
+            ]
+        )
+
+    def get_key(self, crypto, *args, **kwargs):
+        return self.jwkset.get_key(
+            crypto.key_type, kid=crypto.kid
+        )   
 
 
 class TestJws(unittest.TestCase):
 
     def test_simple(self):
+        ''' nose2 jose.tests.test_jws.TestJws.test_simple'''
 
         jws1 = Jws.from_json('{ "alg": "RS256"}')
         self.assertIsNotNone(jws1)
@@ -39,6 +59,7 @@ class TestJws(unittest.TestCase):
         self.assertEqual(jws3.kid, '2019')
 
     def test_compact(self):
+        ''' nose2 jose.tests.test_jws.TestJws.test_compact'''
         #: http://tools.ietf.org/html/
         #:  draft-ietf-jose-json-web-signature-21#section-3.1
 
@@ -64,6 +85,7 @@ class TestJws(unittest.TestCase):
         print msg.to_json()
 
     def test_rs256(self):
+        ''' nose2 jose.tests.test_jws.TestJws.test_rs256'''
         ''' JWS A.2
         '''
 
@@ -132,8 +154,10 @@ class TestJws(unittest.TestCase):
         jwk = Jwk(**pri_json_dict)
         self.assertTrue(jwk.key.is_private)
         signer = jws_new.alg.signer
+
         from jose.jwa.rsa import RS256
         self.assertEqual(signer, RS256)
+
         sig_calc = signer.sign(jwk, s_input_str)
 
         sig = [
@@ -221,6 +245,8 @@ class TestJws(unittest.TestCase):
             msg3.signatures[0].verify(msg3.payload, new_jwk.public_jwk))
 
     def test_jws_appendix_a1(self):
+        ''' nose2 jose.tests.test_jws.TestJws.test_jws_appendix_a1'''
+
         '''{"typ":"JWT",
             "alg":"HS256"}
 
@@ -298,6 +324,7 @@ class TestJws(unittest.TestCase):
             jws.alg.signer.verify(jwk, sinput, sig))
 
     def test_jws_appendix_a4(self):
+        ''' nose2 jose.tests.test_jws.TestJws.test_jws_appendix_a4'''
 
         #: Data
         header_b64 = 'eyJhbGciOiJFUzUxMiJ9'
@@ -383,13 +410,15 @@ class TestJws(unittest.TestCase):
 class TestJwsMessage(unittest.TestCase):
 
     def test_algs(self):
+        ''' nose2 jose.tests.test_jws.TestJwsMessage.test_algs'''
+
+
         for alg in SigDict.values():
             alg = SigEnum.create(alg)
 
             signer = "https://%s.com" % alg.name
             jku = signer + "/jwkset"
-            jwk = Jwk.get_or_create_from(
-                signer, jku, alg.key_type, kid=None,)
+            jwk = Jwk.generate(alg.key_type)
 
             plaintext = "This is a message to be signed by %s" % alg.value
 
@@ -398,17 +427,20 @@ class TestJwsMessage(unittest.TestCase):
             print alg.value, jwk.kty.value, len(signature), _BE(signature)
 
     def test_compact(self):
+        ''' nose2 jose.tests.test_jws.TestJwsMessage.test_compact'''
+
+        jku="https://me.com/jwkset"
+        signer = TestEntity(
+            identifier="https://me.com",
+            jku=jku,
+        )
+
         for alg in SigDict.values():
             alg = SigEnum.create(alg)
 
-            signer = "https://%s.com" % alg.name
-            jku = signer + "/jwkset"
-            jwk = Jwk.get_or_create_from(
-                signer, jku, alg.key_type, kid=None,)
-
             plaintext = "This is a message to be signed by %s" % alg.value
             msg = Message(
-                payload=plaintext, sender=signer)
+                payload=_BE(plaintext), sender=signer)
             msg.add_signature(
                 sender=signer,
                 protected=Jws(alg=alg, kid=None, jku=jku),
@@ -417,21 +449,24 @@ class TestJwsMessage(unittest.TestCase):
             token = msg.serialize_compact()
 
             msg2 = Message.from_token(token, sender=signer)
-            print alg.value, jwk.kty.value, token
+            print "TOKEN=", token
             self.assertTrue(msg2.verify())
 
     def test_json(self):
+        ''' nose2 jose.tests.test_jws.TestJwsMessage.test_json '''
+
         plaintext = "This is a message to be signed by me"
-        signer = "https://me.com"
-        jku = signer + "/jwkset"
+        jku="https://me.com/jwkset"
+
+        signer = TestEntity(
+            identifier="https://me.com",
+            jku=jku,
+        )
 
         msg = Message(payload=plaintext, sender=signer)
 
         for alg in SigDict.values():
             alg = SigEnum.create(alg)
-
-            Jwk.get_or_create_from(
-                signer, jku, alg.key_type, kid=None,)
 
             msg.add_signature(
                 sender=signer,
@@ -440,7 +475,9 @@ class TestJwsMessage(unittest.TestCase):
             )
 
         json_msg = msg.serialize_json(indent=2)
-        print json_msg
+        with open("/tmp/test_json.json", "w") as out:
+            out.write(json_msg)
+
         msg2 = Message.from_token(json_msg, sender=signer)
         self.assertTrue(msg2.verify())
 

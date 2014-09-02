@@ -1,6 +1,9 @@
-from jose.base import conf, BaseEnum, BaseObject
+#from jose.base import conf, BaseEnum, BaseObject
+from jose.base import BaseEnum, BaseObject
 from jose.jwa import keys        # , Algorithm
 from jose.utils import merged
+import time
+import struct
 #
 #import traceback
 
@@ -123,34 +126,35 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
         return jwk
 
     def set_kid(self, kid=None):
-        if kid:
-            self.kid = kid
-        elif not self.kid and self.key:
-            self.kid = conf.generate_kid(self.kty, self.key.length)
+        kid = kid or '-'.join([
+                self.kty.name[0],
+                struct.pack('H', self.length).encode('hex'),
+                struct.pack('d', time.time()).encode('hex')])
+        self.kid = kid
 
-    def add_to(self, owner, jku):
-        jwkset = JwkSet.load(owner, jku) or JwkSet()
-        jwkset.add_key(self)
-        jwkset.save(owner, jku)
+#    def add_to(self, owner, jku):
+#        jwkset = JwkSet.load(owner, jku) or JwkSet()
+#        jwkset.add_key(self)
+#        jwkset.save(owner, jku)
 
-    def delete_from(self, owner, jku):
-        jwkset = JwkSet.load(owner, jku) or JwkSet()
-        jwkset.delete_key(self)
-        jwkset.save(owner, jku)
+#    def delete_from(self, owner, jku):
+#        jwkset = JwkSet.load(owner, jku) or JwkSet()
+#        jwkset.delete_key(self)
+#        jwkset.save(owner, jku)
 
-    @classmethod
-    def get_from(cls, owner, jku, kty, kid=None, **kwargs):
-        return (JwkSet.load(owner, jku) or JwkSet()
-                ).get_key(kty, kid, **kwargs)
+#    @classmethod
+#    def get_from(cls, owner, jku, kty, kid=None, **kwargs):
+#        return (JwkSet.load(owner, jku) or JwkSet()
+#                ).get_key(kty, kid, **kwargs)
 
-    @classmethod
-    def get_or_create_from(cls, owner, jku, kty, kid=None, **kwargs):
-        key = cls.get_from(owner, jku, kty, kid, **kwargs)
-        if key:
-            return key
-        key = cls.generate(kty=kty, **kwargs)
-        key.add_to(owner, jku)
-        return key
+#    @classmethod
+#    def get_or_create_from(cls, owner, jku, kty, kid=None, **kwargs):
+#        key = cls.get_from(owner, jku, kty, kid, **kwargs)
+#        if key:
+#            return key
+#        key = cls.generate(kty=kty, **kwargs)
+#        key.add_to(owner, jku)
+#        return key
 
 
 class JwkSet(BaseObject):
