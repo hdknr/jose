@@ -6,6 +6,9 @@ from jose.utils import base64
 
 class TestCrypto(unittest.TestCase):
     def test_pattern(self):
+        ''' nose2 jose.tests.test_crypto.TestCrypto.test_pattern
+        '''
+
         from jose.jws import _compact as jws
         from jose.jwe import _compact as jwe
 

@@ -130,7 +130,7 @@ class Recipient(BaseObject):
     def provide_key(self, jwk, cek=None, iv=None, jwe=None):
         jwe = Jwe.merge(self.header, jwe)
 
-        assert jwk and isinstance(jwk, Jwk), "Recipient's Jwk must specifile"
+        assert jwk and isinstance(jwk, Jwk), "Recipient's Jwk must be specified."
         assert jwe
         assert jwe.enc
         assert jwe.alg
@@ -175,6 +175,7 @@ class Message(CryptoMessage):
         self._protected = Jwe()  # `protected` cache as Jwe object
         self._plaintext = plaintext
         self.cek = None
+        self.verified = False
 
         super(Message, self).__init__(*args, **kwargs)
 
@@ -248,7 +249,9 @@ class Message(CryptoMessage):
             messsage's CEK and IV
         '''
         header = self.header(jwe=recipient.header)
+        print "@@@@@", type(header)
         key = header.load_key(recipient.recipient)
+        assert key is not None, "Recipient's key MUST be loaded."
 
         if len(self.recipients) < 1:
             #: Provide CEK & IV
@@ -296,6 +299,7 @@ class Message(CryptoMessage):
             _BD(self.tag))
 
         # TODO: is_valid == False, raise execption
+        self.verified = is_valid        #: TODO
 
         return self.zip(plaint, unzip=True)
 
@@ -406,3 +410,6 @@ class Message(CryptoMessage):
             self.iv,
             _BE(ciphertext),
             _BE(tag)])
+
+    def verify(self):
+        return self.verified    # TODO

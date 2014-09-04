@@ -19,12 +19,19 @@ _BD = lambda s: base64.base64url_decode(s)
 
 
 class TestEntity(KeyOwner):
-    def __init__(self, identifier, jku, jwkset):
+    def __init__(self, identifier, jku, jwkset=None):
         self.identifier = identifier 
-        self.jwkset = jwkset
         self.jku = jku
+        self.jwkset = JwkSet(
+            keys=[
+                Jwk.generate(KeyTypeEnum.RSA),
+                Jwk.generate(KeyTypeEnum.EC),
+                Jwk.generate(KeyTypeEnum.OCT),
+            ]   
+        )  
 
     def get_key(self, crypto, *args, **kwargs):
+        assert len(self.jwkset.keys) > 0, "TestEntity has some Jwks."
         return self.jwkset.get_key(
             crypto.key_type, kid=crypto.kid
         ) 
@@ -32,6 +39,9 @@ class TestEntity(KeyOwner):
 class TestJwe(unittest.TestCase):
 
     def test_simple(self):
+        '''
+        nose2 jose.tests.test_jwe.TestJwe.test_simple
+        '''
         data = '{ "alg": "RSA1_5",  "zip": "DEF" }'
         jwe1 = Jwe.from_json(data)
         print dir(jwe1)
@@ -39,6 +49,7 @@ class TestJwe(unittest.TestCase):
 
     def test_merge(self):
         ''' Jwe specs 3 jwe objects(2 in Message, 1 on Signature)
+        nose2 jose.tests.test_jwe.TestJwe.test_merge
         '''
         jwe1 = Jwe.from_json('{ "alg": "RSA1_5"}')
         jwe2 = Jwe.from_json('{ "zip": "DEF"}')
@@ -50,6 +61,9 @@ class TestJwe(unittest.TestCase):
         self.assertIsNone(jwe2.alg)
 
     def test_jwa_appendix_a4(self):
+        '''
+        nose2 jose.tests.test_jwe.TestJwe.test_jwa_appendix_a4
+        '''
         import os
         json_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -124,6 +138,9 @@ class TestJwe(unittest.TestCase):
         print msg.to_json(indent=2)
 
     def test_jwe_appendix2(self):
+        '''
+        nose2 jose.tests.test_jwe.TestJwe.test_jwe_appendix2
+        '''
 
         jwemsg = Message.from_token(JWE_A2.jwe_token, None, None)
 
@@ -153,6 +170,9 @@ class TestJwe(unittest.TestCase):
 class TestJweMessage(unittest.TestCase):
 
     def test_message(self):
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message
+        '''
         jwe = Jwe(alg=KeyEncEnum.A128KW)
         jwe2 = Jwe.from_json(jwe.to_json(indent=2))
         self.assertEqual(jwe2.alg, jwe.alg)
@@ -221,39 +241,50 @@ class TestJweMessage(unittest.TestCase):
         return jwk
 
     def test_message_rsakw(self):
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_rsakw
+        '''
         
         plaintext = "Everybody wants to rule the world."
-#        receiver = "http://test.rsa.com"
-#        jku = receiver + '/jwkset'
+        jku= "http://test.rsa.com/jwkset",
         receiver =  TestEntity(
             identifier="http://test.rsa.com",
-            jku= "http://test.rsa.com/jwkset",
+            jku=jku, 
             jwkset=JwkSet()
         )
 
         for alg in [KeyEncEnum.RSA1_5, KeyEncEnum.RSA_OAEP]:
-            jwk = self._create_jwk(receiver, jku, alg)
-            self.assertEqual(jwk, KeyTypeEnum.RSA)
-            reciever.jwkset.keys.append(jwk)
-
             for enc in EncEnum.all():
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_aeskw(self):
-        receiver = "http://test.aes.com"
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_aeskw
+        '''
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+
+        jku= "http://test.rsa.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.rsa.com",
+            jku=jku, 
+            jwkset=JwkSet()
+        )
 
         for alg in [KeyEncEnum.A128KW, KeyEncEnum.A192KW, KeyEncEnum.A256KW]:
             for enc in EncEnum.all():
-                jwk = self._create_jwk(receiver, jku, alg)
-                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_gcmkw(self):
-        receiver = "http://test.gcm.com"
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_gcmkw
+        '''
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+        jku= "http://test.rsa.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.rsa.com",
+            jku=jku, 
+            jwkset=JwkSet()
+        )
 
         for alg in [
             KeyEncEnum.GCMA128KW,
@@ -261,14 +292,20 @@ class TestJweMessage(unittest.TestCase):
             KeyEncEnum.GCMA256KW
         ]:
             for enc in EncEnum.all():
-                jwk = self._create_jwk(receiver, jku, alg)
-                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_pbes2kw(self):
-        receiver = "http://test.pbes2.com"
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_pbes2kw
+        '''
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+
+        jku= "http://test.pebs2.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.rsa.com",
+            jku=jku, 
+            jwkset=JwkSet()
+        )
 
         for alg in [
             KeyEncEnum.PBES2_HS256_A128KW,
@@ -276,14 +313,20 @@ class TestJweMessage(unittest.TestCase):
             KeyEncEnum.PBES2_HS512_A256KW,
         ]:
             for enc in EncEnum.all():
-                jwk = self._create_jwk(receiver, jku, alg)
-                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_ecdhkw(self):
-        receiver = "http://test.ecdh.com"
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_ecdhkw
+        '''
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+
+        jku= "http://test.ecdhkw.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.ecdhkw.com",
+            jku=jku, 
+            jwkset=JwkSet()
+        )
 
         for alg in [
             KeyEncEnum.ECDH_ES_A128KW,
@@ -291,39 +334,56 @@ class TestJweMessage(unittest.TestCase):
             KeyEncEnum.ECDH_ES_A256KW,
         ]:
             for enc in EncEnum.all():
-                jwk = self._create_jwk(receiver, jku, alg)
-                self.assertEqual(jwk.kty, KeyTypeEnum.EC)
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_ecdhdir(self):
-        receiver = "http://test.ecdh.com"
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_ecdhdir
+        '''
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+
+        jku= "http://test.ecdhdir.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.ecdhdir.com", jku=jku, 
+        )
 
         for alg in [
             KeyEncEnum.ECDH_ES,
         ]:
             for enc in EncEnum.all():
-                jwk = self._create_jwk(receiver, jku, alg)
-                self.assertEqual(jwk.kty, KeyTypeEnum.EC)
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_message_dir(self):
-        receiver = "http://test.dir.com"
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_message_dir
+        '''
         plaintext = "Everybody wants to rule the world."
-        jku = receiver + '/jwkset'
+        
+        jku= "http://test.dir.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.dir.com", jku=jku, 
+        )
 
         for alg in [
             KeyEncEnum.DIR,
         ]:
             for enc in EncEnum.all():
-                jwk = self._create_jwk(receiver, jku, alg)
-                self.assertEqual(jwk.kty, KeyTypeEnum.OCT)
                 self._alg_enc_test(alg, enc, receiver, jku, plaintext)
 
     def test_multi(self):
+        '''
+        nose2 jose.tests.test_jwe.TestJweMessage.test_multi
+        '''
 
         payload = "All you need is love."
+
+        jku= "http://test.multi.com/jwkset",
+        receiver =  TestEntity(
+            identifier="http://test.multi.com", jku=jku, 
+        )
+        fake =  TestEntity(
+            identifier="http://test.fake.com", jku=jku, 
+        )
 
         enc = EncEnum.all()[0]
 
@@ -334,15 +394,9 @@ class TestJweMessage(unittest.TestCase):
                 plaintext=_BE(payload)
             )
 
-            receivers = []
             for alg in KeyEncEnum.all():
                 if alg.single:
                     continue
-                receiver = 'https://%s.com/' % alg.name.lower()
-                receivers.append(receiver)
-                jku = receiver + 'jwkset'
-                Jwk.get_or_create_from(
-                    receiver, jku, alg.key_type, kid=None,)
 
                 recipient = Recipient(
                     header=Jwe(alg=alg, jku=jku,),
@@ -352,6 +406,7 @@ class TestJweMessage(unittest.TestCase):
 
             json_message = message.serialize_json(indent=2)
 
+            receivers = [fake, receiver]
             for me in receivers:
                 message2 = Message.from_token(
                     json_message, sender=None, receiver=me)
