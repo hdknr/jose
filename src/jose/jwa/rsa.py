@@ -146,6 +146,9 @@ class Key(BaseKey):
             (not hasattr(self.material, 'd') or
              not self.material.d)
 
+    def thumbprint_fields(self):
+        return ['e', 'kty', 'n', ]
+
 
 class RsaSigner(object):
 

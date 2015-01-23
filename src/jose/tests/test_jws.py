@@ -13,8 +13,8 @@ from jose.jwk import Jwk, JwkSet
 
 class TestEntity(KeyOwner):
     def __init__(self, identifier, jku):
-        self.identifier = identifier 
-        self.jku = jku 
+        self.identifier = identifier
+        self.jku = jku
         self.jwkset = JwkSet(
             keys=[
                 Jwk.generate(KeyTypeEnum.RSA),
@@ -26,7 +26,7 @@ class TestEntity(KeyOwner):
     def get_key(self, crypto, *args, **kwargs):
         return self.jwkset.get_key(
             crypto.key_type, kid=crypto.kid
-        )   
+        )
 
 
 class TestJws(unittest.TestCase):

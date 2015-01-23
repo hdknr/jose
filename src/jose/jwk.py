@@ -1,11 +1,17 @@
-#from jose.base import conf, BaseEnum, BaseObject
-from jose.base import BaseEnum, BaseObject
+# from jose.base import conf, BaseEnum, BaseObject
+from jose.base import (
+    BaseEnum, BaseObject,
+    BaseObjectSerializer,
+)
 from jose.jwa import keys        # , Algorithm
-from jose.utils import merged
+from jose.utils import merged, base64
 import time
 import struct
+import json
+import hashlib
+
 #
-#import traceback
+# import traceback
 
 
 class UseEnum(BaseEnum):
@@ -38,6 +44,17 @@ _header = dict(
     x5c=[],       #: X.509 Chain
     x5t="",       #: X.509 Thumprint
 )
+
+
+class ThumbprintSerializer(BaseObjectSerializer):
+
+    def default(self, obj):
+        if isinstance(obj, Jwk):
+            return dict(
+                (k, v) for k, v in obj.__dict__.items()
+                if k in obj.key.thumbprint_fields())
+
+        return super(ThumbprintSerializer, self).default(obj)
 
 
 class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
@@ -127,34 +144,19 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
 
     def set_kid(self, kid=None):
         kid = kid or '-'.join([
-                self.kty.name[0],
-                struct.pack('H', self.length).encode('hex'),
-                struct.pack('d', time.time()).encode('hex')])
+            self.kty.name[0],
+            struct.pack('H', self.length).encode('hex'),
+            struct.pack('d', time.time()).encode('hex')])
         self.kid = kid
 
-#    def add_to(self, owner, jku):
-#        jwkset = JwkSet.load(owner, jku) or JwkSet()
-#        jwkset.add_key(self)
-#        jwkset.save(owner, jku)
+    def to_thumbprint_json(self):
+        return json.dumps(
+            self, cls=ThumbprintSerializer,
+            separators=(',', ':'), sort_keys=True)
 
-#    def delete_from(self, owner, jku):
-#        jwkset = JwkSet.load(owner, jku) or JwkSet()
-#        jwkset.delete_key(self)
-#        jwkset.save(owner, jku)
-
-#    @classmethod
-#    def get_from(cls, owner, jku, kty, kid=None, **kwargs):
-#        return (JwkSet.load(owner, jku) or JwkSet()
-#                ).get_key(kty, kid, **kwargs)
-
-#    @classmethod
-#    def get_or_create_from(cls, owner, jku, kty, kid=None, **kwargs):
-#        key = cls.get_from(owner, jku, kty, kid, **kwargs)
-#        if key:
-#            return key
-#        key = cls.generate(kty=kty, **kwargs)
-#        key.add_to(owner, jku)
-#        return key
+    def thumbprint(self):
+        return base64.base64url_encode(
+            hashlib.sha256(self.to_thumbprint_json()).digest())
 
 
 class JwkSet(BaseObject):

@@ -5,6 +5,8 @@ from jose.jwk import Jwk, JwkSet
 from jose.jwa.keys import KeyTypeEnum
 from jose.jwa import keys
 
+from jose.tests import JWK_THUMBPRINT
+
 
 class TestJwk(unittest.TestCase):
     def test_serialize(self):
@@ -44,6 +46,14 @@ class TestJwk(unittest.TestCase):
         self.assertEqual(jwkset.get_key(kty=KeyTypeEnum.EC).kid, 'kidEc')
         self.assertEqual(jwkset.get_key(kty=KeyTypeEnum.OCT).kid, 'kidOct')
 
+    def test_thumbprint(self):
+        '''
+        nose2 jose.tests.test_jwk.TestJwk.test_thumbprint
+        '''
+        jwk = Jwk(**JWK_THUMBPRINT.jwk_data)
+        self.assertEqual(
+            jwk.thumbprint(),
+            JWK_THUMBPRINT.thumbprint_value_b64)
 
 
 if __name__ == '__main__':

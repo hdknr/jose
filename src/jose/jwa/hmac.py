@@ -100,6 +100,9 @@ class Key(BaseKey):
     def shared_key(self):
         return self.material
 
+    def thumbprint_fields(self):
+        return ['k', 'kty', ]
+
 if __name__ == '__main__':
     from jose.jwa.keys import KeyTypeEnum
     jwk = Jwk.generate(kty=KeyTypeEnum.create('oct'))

@@ -13,25 +13,33 @@ from math import ceil
 
 from struct import pack
 
-_jwk_to_pub = lambda jwk: (
-    jwk.crv.bits, (
-        base64.long_from_b64(jwk.x),
-        base64.long_from_b64(jwk.y),
+
+def _jwk_to_pub(jwk):
+    return (
+        jwk.crv.bits, (
+            base64.long_from_b64(jwk.x),
+            base64.long_from_b64(jwk.y),)
     )
-)
-_jwk_to_pri = lambda jwk: (
-    jwk.crv.bits,
-    base64.long_from_b64(jwk.d)
-)
+
+
+def _jwk_to_pri(jwk):
+    return (
+        jwk.crv.bits,
+        base64.long_from_b64(jwk.d)
+    )
+
 
 # Compute ECDH
-dhZ = lambda crv, pub, pri: elliptic.mulp(
-    crv['a'], crv['b'], crv['p'], pub, pri)[0]
+def dhZ(crv, pub, pri):
+    return elliptic.mulp(
+        crv['a'], crv['b'], crv['p'], pub, pri)[0]
+
 
 # Curve Parameter
-curve_parameter = lambda fields: dict(
-    zip(('bits', 'p', 'N', 'a', 'b', 'G'),
-        curves.get_curve(fields)))
+def curve_parameter(fields):
+    return dict(
+        zip(('bits', 'p', 'N', 'a', 'b', 'G'),
+            curves.get_curve(fields)))
 
 
 class Key(BaseKey):
@@ -134,6 +142,9 @@ class Key(BaseKey):
             return long_to_bytes(z, self.block_size)
         return z
 
+    def thumbprint_fields(self):
+        return ['crv', 'kty', 'x', 'y', ]
+
 
 class EcdsaSigner(object):
 
@@ -220,11 +231,12 @@ class ES512(EcdsaSigner):
 # Other Information used in Concat KDF
 # AlgorithmID || PartyUInfo || PartyVInfo || SuppPubInfo
 
-other_info = lambda alg, pu, pv, klen: ''.join([
-    pack("!I", len(alg)), alg,
-    pack("!I", len(pu)), pu,
-    pack("!I", len(pv)), pv,
-    pack("!I", klen), ])
+def other_info(alg, pu, pv, klen):
+    return ''.join([
+        pack("!I", len(alg)), alg,
+        pack("!I", len(pu)), pu,
+        pack("!I", len(pv)), pv,
+        pack("!I", klen), ])
 
 
 # Coccat KDF : NIST defines SHA256
@@ -233,7 +245,8 @@ def ConcatKDF(agr, dklen, oi, digest_method=SHA256):
 
     # Digest source
     # counter(in bytes), agreement(in bytes), otherinfo
-    _src = lambda cbn: "".join([cbn, agr, oi])
+    def _src(cbn):
+        return "".join([cbn, agr, oi])
 
     from math import ceil
     from struct import pack
@@ -249,7 +262,7 @@ def ConcatKDF(agr, dklen, oi, digest_method=SHA256):
     return dkm[:klen]
 
 
-## Key Encryptor
+# Key Encryptor
 
 class EcdhKeyEncryotor(BaseKeyEncryptor):
     _KEY_WRAP = None
