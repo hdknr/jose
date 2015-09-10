@@ -8,6 +8,7 @@ SITE = 'github.com'
 USER = "hdknr"
 PROJECT = NAME
 URL = 'https://{0}/{1}/{2}'.format(SITE, USER, PROJECT)
+BASE = 'src'
 
 
 def install(*args, **kwargs):
@@ -33,7 +34,7 @@ def install(*args, **kwargs):
         url=URL,
         description=DESCRIPTION,
         download_url=URL,
-        package_dir={'': 'src'},
+        package_dir={'': BASE, },
         packages=PACKAGES,
         include_package_data=True,
         zip_safe=False,
@@ -50,7 +51,7 @@ import re
 
 DEP = re.compile(r'-e\s+(.+)#egg=(.+)')
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(BASE_DIR, 'lib'))
+sys.path.insert(0, os.path.join(BASE_DIR, BASE, ))
 
 
 def read(fname):
