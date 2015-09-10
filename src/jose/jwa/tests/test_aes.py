@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import unittest
-from jose.utils import base64, _BE, _BD
+from jose.utils import base64, _BD
 from jose.jwk import Jwk
 from jose.jwe import Jwe
 from jose.jwa import encs
@@ -16,6 +17,7 @@ class TestAes(unittest.TestCase):
             11, 100, 157, 250, 63, 170, 106, 206,
             107, 124, 212, 45, 111, 107, 9, 219,
             200, 177, 0, 240, 143, 156, 44, 207]
+
         cek_ci_oct = [
             232, 160, 123, 211, 183, 76, 245,
             132, 200, 128, 123, 75, 190, 216,
@@ -186,12 +188,12 @@ class TestAes(unittest.TestCase):
         p_new, is_valid = cenc.decrypt(cek, ciphert, iv, aad, tag)
         self.assertTrue(is_valid)
         self.assertEqual(p_new, plaint)
-        print p_new
+        print(p_new)
         c_new, tag_new = cenc.encrypt(cek, plaint, iv, aad)
         p_new_2, is_valid_2 = cenc.decrypt(cek, c_new, iv, aad, tag_new)
         self.assertTrue(is_valid_2)
         self.assertEqual(p_new_2, plaint)
-        print p_new_2
+        print(p_new_2)
 
     def test_jwe_appendix_a3(self):
         # Appendix A.3
@@ -275,7 +277,7 @@ class TestAes(unittest.TestCase):
         self.assertTrue(v)
         self.assertTrue(pt, plaint)
 
-        print pt
+        print(pt)
 
     def test_jwe_appendix_b2(self):
         plaint_oct = [

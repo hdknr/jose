@@ -3,7 +3,7 @@ This product includes software developed at:
 * LaFoglia
 * LaFoglia,Inc
 
-Copyright 2013  LaFoglia
+Copyright 2013-2015  LaFoglia
 
 Brand names include, but are not limited to:
 

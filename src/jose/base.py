@@ -28,7 +28,7 @@ class BaseEnum(Enum):
         except ValueError:
             return default
 
-        except Exception, e:
+        except Exception as e:
             raise e
 
 

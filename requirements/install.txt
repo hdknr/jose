@@ -1,0 +1,9 @@
+requests
+furl
+ordereddict
+jsonpickle
+pycrypto
+enum34
+ecdsa
+ecc
+six

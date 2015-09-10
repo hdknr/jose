@@ -1,91 +1,23 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-#  This file is part of "Jose"
-#
-#  mand is a Django based management interface for MySQL users and databases.
-#
-#  Copyright 2013 LaFoglia
-#
-#  Licensed under the Simplified BSD License;
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#      http://www.freebsd.org/copyright/freebsd-license.html
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-#  NOTES
-#
-#  Create source distribution tarball:
-#    python setup.py sdist --formats=gztar
-#
-#  Create binary distribution rpm:
-#    python setup.py bdist --formats=rpm
-#
-#  Create binary distribution rpm with being able to change an option:
-#    python setup.py bdist_rpm --release 7
-#
-#  Test installation:
-#    python setup.py install --prefix=/usr --root=/tmp
-#
-#  Install:
-#    python setup.py install
-#  Or:
-#    python setup.py install --prefix=/usr
-#
 
-######################################################
 NAME = 'jose'
-DESCRIPTION = 'Jose - Jxx '
-PACKAGES = ['jose', ]
-######################################################
-import sys
-import os
-import glob
-sys.path.insert(0, os.path.abspath('src'))
+DESCRIPTION = 'Jose - Javascript Object Signing and Encryption'
+PACKAGES = [NAME, ]
 
-from setuptools import setup
-
-# - Meta Info
-
-from jose import get_version
-
-SCRIPTS = glob.glob('src/scripts/*.py')
-try:
-    INSTALL_REQUIRES = [
-        r for r in
-        open('requirements.txt').read().split('\n')
-        if len(r) > 0 and not r.startswith('-e')
-    ]
-except:
-    INSTALL_REQUIRES = []
-
-# - readme
+SITE = 'github.com'
+USER = "hdknr"
+PROJECT = NAME
+URL = 'https://{0}/{1}/{2}'.format(SITE, USER, PROJECT)
 
 
-def read(fname):
-    """Utility function to read the README file."""
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
-
-if __name__ == '__main__':
+def install(*args, **kwargs):
+    from setuptools import setup
     setup(
-        name=NAME,
-        version=get_version(),
         license='Simplfied BSD License',
         author='Hideki Nara of LaFoaglia,Inc.',
         author_email='gmail [at] hdknr.com',
         maintainer='LaFoglia,Inc.',
         maintainer_email='gmail [at] hdknr.com',
-        url='https://github.com/hdknr/jose',
-        description=DESCRIPTION,
-        long_description=read('README.rst'),
-        download_url='https://github.com/hdknr/jose',
         platforms=['any'],
         classifiers=[
             'Development Status :: 4 - Beta',
@@ -96,9 +28,46 @@ if __name__ == '__main__':
             'Operating System :: OS Independent',
             'Programming Language :: Python',
         ],
+        name=NAME,
+        version=getattr(__import__(NAME), 'get_version')(),
+        url=URL,
+        description=DESCRIPTION,
+        download_url=URL,
         package_dir={'': 'src'},
         packages=PACKAGES,
         include_package_data=True,
         zip_safe=False,
-        scripts=SCRIPTS,
+        long_description=read('README.rst'),
+        scripts=glob.glob('scripts/*.py'),
+        install_requires=requires(),
+        dependency_links=deps(),
     )
+
+import sys
+import os
+import glob
+import re
+
+DEP = re.compile(r'-e\s+(.+)#egg=(.+)')
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(BASE_DIR, 'lib'))
+
+
+def read(fname):
+    return open(os.path.join(BASE_DIR, fname)).read()
+
+
+def lines(fname):
+    return [line.strip()
+            for line in open(os.path.join(BASE_DIR, fname)).readlines()]
+
+
+def deps(i=1):
+    return [DEP.search(r).group(i) for r in lines("requirements/links.txt")]
+
+
+def requires():
+    return lines("requirements/install.txt") + deps(2)
+
+if __name__ == '__main__':
+    install()
