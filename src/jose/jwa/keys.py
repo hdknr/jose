@@ -1,21 +1,16 @@
 from jose.base import BaseEnum
+from enum import Enum
+
 
 # kty
 
-KeyTypeDict = dict(
-    EC='EC',
-    RSA='RSA',
-    OCT='oct',
-)
-
-
-class BaseKeyTypeEnum(BaseEnum):
+class KeyTypeEnum(Enum):
+    EC = 'EC'
+    RSA = 'RSA'
+    OCT = 'oct'
 
     def get_key_class(self, *args, **kwargs):
-        import rsa
-        import ec
-        import hmac
-
+        from . import (rsa, ec, hmac)
         return dict(
             RSA=rsa.Key,
             EC=ec.Key,
@@ -26,18 +21,14 @@ class BaseKeyTypeEnum(BaseEnum):
         return self.get_key_class()(self, *args, **kwargs)
 
 
-KeyTypeEnum = type('KeyTypeEnum', (BaseKeyTypeEnum,), KeyTypeDict)
-
 # crv
 
-CurveDict = dict(
-    P_256='P-256',
-    P_384='P-384',
-    P_521='P-521',
-)
 
+class CurveEnum(BaseEnum):
+    P_256 = 'P-256'
+    P_384 = 'P-384'
+    P_521 = 'P-521'
 
-class BaseCurveEnum(BaseEnum):
     @property
     def bits(self):
         return int(self.name[2:])
@@ -46,9 +37,6 @@ class BaseCurveEnum(BaseEnum):
     def from_bits(cls, bits):
         if isinstance(bits, int):
             return cls.create('P-%d' % bits)
-
-
-CurveEnum = type('Curve', (BaseCurveEnum,), CurveDict)
 
 
 class RSAOtherPrime(object):

@@ -1,6 +1,6 @@
 from jose.base import AlgorithmBaseEnum
-from encs import KeyEncDict
-from sigs import SigDict
+from jose.jwa.encs import KeyEncDict
+from jose.jwa.sigs import SigDict
 
 __all__ = ['Algorithm', ]
 

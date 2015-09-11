@@ -15,18 +15,14 @@ from struct import pack
 
 
 def _jwk_to_pub(jwk):
-    return (
-        jwk.crv.bits, (
-            base64.long_from_b64(jwk.x),
-            base64.long_from_b64(jwk.y),)
-    )
+    return (jwk.crv.bits,
+            (base64.long_from_b64(jwk.x),
+             base64.long_from_b64(jwk.y),))
 
 
 def _jwk_to_pri(jwk):
-    return (
-        jwk.crv.bits,
-        base64.long_from_b64(jwk.d)
-    )
+    return (jwk.crv.bits,
+            base64.long_from_b64(jwk.d))
 
 
 # Compute ECDH
@@ -157,12 +153,13 @@ class EcdsaSigner(object):
         )
 
     @classmethod
-    def encode_signature(cls, (r, s), block_size=None):
+    def encode_signature(cls, sigtuple, block_size=None):
         '''
-            :param cls:
-            :param (r, s): signagure tuple
-            :param int block_size: Key block size to pad "\00"s
+        :param cls:
+        :param tuple sigtuple: signagure tuple(r, s)
+        :param int block_size: Key block size to pad "\00"s
         '''
+        r, s = sigtuple
         sig = "".join([
             long_to_bytes(r, block_size),
             long_to_bytes(s, block_size),

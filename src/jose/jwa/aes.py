@@ -1,10 +1,15 @@
+from __future__ import print_function
+
 from Crypto.Cipher import AES
 from Crypto.Hash import HMAC, SHA256, SHA384, SHA512
 from Crypto.Util.strxor import strxor
 from struct import pack
 from jose.base import BaseContentEncryptor
 
-slice = lambda s, n: [s[i:i + n] for i in range(0, len(s), n)]
+
+def slice(s, n):
+    return [s[i:i + n] for i in range(0, len(s), n)]
+
 AES_IV = b'\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6'
 
 
@@ -21,9 +26,9 @@ def aes_key_wrap(K, P):
 
     n = len(P) / 8      # 64 bit blocks
     A = AES_IV          # Set A = IV
-    R = [b'\0\0\0\0\0\0\0\0'
-         ] + slice(P, 8)     # copy of slice every 8 octets
-                        # For i = 1 to n ; R[i] = P[i]
+    R = [b'\0\0\0\0\0\0\0\0'] + slice(P, 8)
+    # copy of slice every 8 octets
+    # For i = 1 to n ; R[i] = P[i]
 
     _AES = AES.AESCipher(K)
     for j in range(0, 6):               # For j=0 to 5
@@ -48,14 +53,14 @@ def aes_key_unwrap(K, C):
     """
 
     assert len(K) * 8 in [128, 192, 256]  # key bits
-    assert len(C) % 8 == 0     # 64 bit blok
+    assert len(C) % 8 == 0      # 64 bit blok
 
-    n = len(C) / 8 - 1         # 64bit blocks
+    n = len(C) / 8 - 1          # 64bit blocks
     R = slice(C, 8)
-    A = R[0]                   # Set A = C[0] (=R[0])
+    A = R[0]                    # Set A = C[0] (=R[0])
     R[0] = [b'\0\0\0\0\0\0\0\0']
-                               # init R[0]
-                               # For i = 1 to n ; R[i] = C[i]
+    # init R[0]
+    # For i = 1 to n ; R[i] = C[i]
 
     _AES = AES.AESCipher(K)
     for j in range(5, -1, -1):           # For j = 5 to 0
@@ -73,7 +78,7 @@ def aes_key_unwrap(K, C):
     else:
         raise Exception("unwrap failed: Invalid IV")
 
-### Key Encryption
+# Key Encryption
 
 from jose.base import BaseKeyEncryptor
 
@@ -107,10 +112,9 @@ class AesKeyEncryptor(BaseKeyEncryptor):
 
     @classmethod
     def provide(cls, enc, jwk, jwe, cek=None, iv=None, *args, **kwargs):
-#        _enc = jwe.enc.encryptor
         _enc = enc.encryptor
         if cek:
-            #:TODO check iv lenth and validity
+            # TODO check iv lenth and validity
             pass
         else:
             cek, iv = _enc.create_key_iv()
@@ -139,12 +143,21 @@ class A256KW(AesKeyEncryptor):
     _IV_LEN = 16
 
 
-### Content Encryption
+# Content Encryption
 
 _BS = 16
-pkcs5_pad = lambda s: s + (_BS - len(s) % _BS) * chr(_BS - len(s) % _BS)
-pkcs5_unpad = lambda s: s[0:-ord(s[-1])]
-to_al = lambda x:  pack("!Q", 8 * len(x))
+
+
+def pkcs5_pad(s):
+    return s + (_BS - len(s) % _BS) * chr(_BS - len(s) % _BS)
+
+
+def pkcs5_unpad(s):
+    return s[0:-ord(s[-1])]
+
+
+def to_al(x):
+    return pack("!Q", 8 * len(x))
 
 
 class AesContentEncrypor(BaseContentEncryptor):
@@ -239,9 +252,9 @@ if __name__ == '__main__':
         cek, iv = enc.create_key_iv()
         assert len(cek) == enc._KEY_LEN
         assert len(iv) == enc._IV_LEN
-        print enc.__name__
-        print "CEK =", base64.urlsafe_b64encode(cek)
-        print "IV=", base64.urlsafe_b64encode(iv)
+        print(enc.__name__)
+        print("CEK =", base64.urlsafe_b64encode(cek))
+        print("IV=", base64.urlsafe_b64encode(iv))
 
     import itertools
     from jose.jwk import Jwk
@@ -254,12 +267,12 @@ if __name__ == '__main__':
         )
         cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
-        print "alg=", a, "enc=", e
-        print "CEK=", base64.base64url_encode(cek)
-        print "IV=", base64.base64url_encode(iv)
-        print "CEK_CI=", base64.base64url_encode(cek_ci)
-        print "Jwe.iv=",  jwe.iv
-        print "Jwe.tag=",  jwe.tag
+        print("alg=", a, "enc=", e)
+        print("CEK=", base64.base64url_encode(cek))
+        print("IV=", base64.base64url_encode(iv))
+        print("CEK_CI=", base64.base64url_encode(cek_ci))
+        print("Jwe.iv=",  jwe.iv)
+        print("Jwe.tag=",  jwe.tag)
 
         cek2 = jwe.agree_key(jwk, cek_ci)
-        print "CEK AGREED=", base64.base64url_encode(cek2)
+        print("CEK AGREED=", base64.base64url_encode(cek2))

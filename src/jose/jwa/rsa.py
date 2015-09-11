@@ -28,6 +28,7 @@ def private_construct(n, e, d, p=None, q=None, u=None):
         return RSA.RSAImplementation().construct((n, e, d))
     return RSA.RSAImplementation().construct((n, e, d, p, q, u,))
 
+
 def generate_key(bits=1024):
     return RSA.generate(bits)
 
@@ -214,8 +215,8 @@ class PS512(RsaSigner):
     _digester = SHA512
     _signer = PKCS1_PSS
 
+# Key Encryption
 
-## Key Encryption
 
 class RsaKeyEncryptor(BaseKeyEncryptor):
     @classmethod
@@ -266,12 +267,12 @@ if __name__ == '__main__':
     jwe = Jwe.from_json('{"alg": "RSA1_5", "enc": "A128CBC-HS256"}')
     cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
-    print "CEK", base64.base64url_encode(cek)
-    print "IV", base64.base64url_encode(iv)
-    print "CEK_CI", base64.base64url_encode(cek_ci)
+    print("CEK", base64.base64url_encode(cek))
+    print("IV", base64.base64url_encode(iv))
+    print("CEK_CI", base64.base64url_encode(cek_ci))
 
     cek2 = jwe.agree_key(jwk, cek_ci)
-    print "CEK2", base64.base64url_encode(cek_ci)
-    print "IV", base64.base64url_encode(iv)
+    print("CEK2", base64.base64url_encode(cek_ci))
+    print("IV", base64.base64url_encode(iv))
 
-    assert cek == cek2
+    assert(cek == cek2)

@@ -1,14 +1,14 @@
 import json
 from enum import Enum
 from jose.utils import base64
-from urllib import quote
-import urlparse
+from six.moves.urllib.parse import quote, urlparse, parse_qs
+# import urlparse
 from datetime import datetime
 
 
 def urlencode(kwargs):
     return "&".join(
-        "%s=%s" % (k, quote(v)) for k, v in kwargs.items()
+        "{0}={1}".format(k, quote(v)) for k, v in kwargs.items()
     )
 
 
@@ -19,7 +19,8 @@ class JoseException(Exception):
         self.message = message
 
 
-class BaseEnum(Enum):
+class BaseEnum(object):
+
     @classmethod
     def create(cls, value, default=None):
         try:
@@ -119,7 +120,7 @@ class BaseObject(object):
     def from_url(cls, url, base=None):
         base = base or cls
         return cls(
-            **dict(urlparse.parse_qsl(urlparse.urlparse(url).query))
+            **dict(parse_qs(urlparse(url).query))
         )
 
     @classmethod

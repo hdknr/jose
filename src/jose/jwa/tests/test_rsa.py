@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import unittest
 from jose.jwa.sigs import SigEnum
@@ -35,11 +36,11 @@ class TestRsaKey(unittest.TestCase):
         self.assertEqual(pri3.q, pri2.q)
         self.assertEqual(pri3.u, pri2.u)
 
-        print pri.keydata, type(pri.keydata)
-        print pri.key, type(pri.key)
-        print (pri.d, pri.p, pri.q, pri.u, )
+        print(pri.keydata, type(pri.keydata))
+        print(pri.key, type(pri.key))
+        print((pri.d, pri.p, pri.q, pri.u, ))
 
-        print pub.keydata, type(pub.keydata)
+        print(pub.keydata, type(pub.keydata))
 
         from uuid import uuid1
         rnd = uuid1().int
@@ -48,7 +49,7 @@ class TestRsaKey(unittest.TestCase):
         from hashlib import sha256
         dig = sha256(msg).digest()
         sig = pri.sign(dig, rnd)
-        print "@@@ signature", sig
+        print("@@@ signature", sig)
         self.assertTrue(pub.verify(dig, sig))
 
     def test_public(self):
@@ -71,7 +72,7 @@ class TestRsaKey(unittest.TestCase):
         from Crypto.PublicKey import RSA
         pub = RSA.RSAImplementation().construct((ln, le,))
 
-        print pub.exportKey('PEM')
+        print(pub.exportKey('PEM'))
 
     def test_jwk(self):
 
@@ -105,7 +106,7 @@ class TestRsaKey(unittest.TestCase):
 
         for sig in [SigEnum.PS256, SigEnum.PS384, SigEnum.RS512]:
             pss = sig.signer
-            print type(pss)
+            print(type(pss))
             sig = pss.sign(jwk, msg)
             self.assertTrue(pss.verify(jwk, msg, sig))
 
