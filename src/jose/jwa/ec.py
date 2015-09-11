@@ -7,83 +7,44 @@ import hashlib
 
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 from Crypto.Hash import SHA256
-from ecc.Key import Key as EccKey
-from ecc import ecdsa, elliptic, curves
+from ecdsa import (
+    SigningKey, VerifyingKey,
+    ellipticcurve as ec)
+from ecdsa.ecdsa import Signature
 from math import ceil
 
 from struct import pack
+import pydoc
+from six import b
 
 
-def _jwk_to_pub(jwk):
-    return (jwk.crv.bits,
-            (base64.long_from_b64(jwk.x),
-             base64.long_from_b64(jwk.y),))
+def ecdsa_dhZ(other_pub, my_priv):
+    p = other_pub.pubkey.point * my_priv.privkey.secret_multiplier
+    return p.x()
 
 
-def _jwk_to_pri(jwk):
-    return (jwk.crv.bits,
-            base64.long_from_b64(jwk.d))
-
-
-# Compute ECDH
-def dhZ(crv, pub, pri):
-    return elliptic.mulp(
-        crv['a'], crv['b'], crv['p'], pub, pri)[0]
-
-
-# Curve Parameter
-def curve_parameter(fields):
-    return dict(
-        zip(('bits', 'p', 'N', 'a', 'b', 'G'),
-            curves.get_curve(fields)))
-
-
-class Key(BaseKey):
-
-    def init_material(self, length=256, crv=CurveEnum.P_256, **kwargs):
-        ''' generate new key material '''
-        length = length or crv.bits
-        self.material = EccKey.generate(length)
+class EcdsaKey(BaseKey):
+    '''PYPI ecdsa based key operation
+    '''
+    def curve_for_bits(self, length):
+        return pydoc.locate(
+            'ecdsa.curves.NIST{0}p'.format(length))
 
     @property
     def length(self):
-        if self.is_public:
-            return self.material._pub[0]
-        if self.is_private:
-            return self.material._priv[0]
-        return 0
+        return int(self.material.curve.name[4:7])
 
-    def to_jwk(self, jwk):
-        key = self.public_key
-        if key:
-            jwk.kty = KeyTypeEnum.EC
-            jwk.crv = CurveEnum.create("P-{:d}".format(key._pub[0]))
-            jwk.x = base64.long_to_b64(key._pub[1][0])
-            jwk.y = base64.long_to_b64(key._pub[1][1])
-
-        key = self.private_key
-        if key:
-            jwk.d = base64.long_to_b64(key._priv[1])
-
-    def from_jwk(self, jwk):
-        if jwk.d:
-            self.material = EccKey(
-                public_key=_jwk_to_pub(jwk),
-                private_key=_jwk_to_pri(jwk))
-        else:
-            self.material = EccKey(public_key=_jwk_to_pub(jwk))
-
-    @property
-    def block_size(self):
-        return int(ceil(self.public_key._pub[0] / 8.0))
+    def generate_key(self, bits):
+        self.material = SigningKey.generate(
+            curve=self.curve_for_bits(bits))
 
     @property
     def is_private(self):
-        return self.material and self.material.private()
+        return isinstance(self.material, SigningKey)
 
     @property
     def is_public(self):
-        return self.material and not self.material.private()
+        return isinstance(self.material, VerifyingKey)
 
     @property
     def private_key(self):
@@ -91,49 +52,113 @@ class Key(BaseKey):
 
     @property
     def public_key(self):
-        if self.is_public:
-            return self.material
-        if self.is_private:
-            return EccKey.decode(self.material.encode())
-        return None
+        return self.is_private and \
+            self.material.get_verifying_key() or self.material
 
     @property
-    def public_tuple(self):
-        self.material._pub
+    def public_key_tuple(self):
+        def _cache():
+            material = self.public_key
+            self._public_key_tuple = material and (
+                self.length,
+                material.pubkey.point.x(),
+                material.pubkey.point.y(),
+            ) or (None, None, None,)
+            return self._public_key_tuple
+
+        return getattr(self, '_public_key_tuple', _cache())
 
     @property
-    def private_tuple(self):
-        return self.material._priv if self.is_private else {}
+    def private_key_tuple(self):
+        def _cache():
+            material = self.private_key
+            self._private_key_tuple = material and (
+                self.length,
+                material.privkey.secret_multiplier,
+            ) or (None, None, )
+            return self._private_key_tuple
+
+        return getattr(self, '_private_key_tuple', _cache())
+
+    def create_material(self, bits, d=None, x=None, y=None):
+        curve = self.curve_for_bits(bits)
+        if d:
+            return SigningKey.from_secret_exponent(d, curve)
+        if x and y:
+            point = ec.Point(curve.curve, x, y, curve.order)
+            return VerifyingKey.from_public_point(point, curve)
+
+    def dhZ(self, other_pub, my_priv):
+        return ecdsa_dhZ(other_pub, my_priv)
+
+    def sign_longdigest(self, longdigest):
+        '''
+        :rtype tuple:   (r, s)
+        '''
+        return self.private_key.sign_number(longdigest)
+
+    def verify_longdigest(self, longdigest, signature):
+        '''
+        :param tuple signature: (r, s)
+        '''
+        return self.public_key.pubkey.verifies(
+            longdigest, Signature(*signature))
+
+
+class Key(EcdsaKey):
+
+    def init_material(self, length=256, crv=CurveEnum.P_256, **kwargs):
+        ''' generate new key material '''
+        self.generate_key(length or crv.bits)
+
+    def to_jwk(self, jwk, force_public=False):
+        '''Set parameters to Jwk '''
+        crv, x, y = self.public_key_tuple
+        if crv:
+            jwk.kty = KeyTypeEnum.EC
+            jwk.crv = CurveEnum.create("P-{:d}".format(crv))
+            jwk.x = base64.long_to_b64(x)
+            jwk.y = base64.long_to_b64(y)
+
+        crv, d = self.private_key_tuple
+        if d:
+            jwk.d = base64.long_to_b64(d)
+
+    def from_jwk(self, jwk):
+        self.material = jwk.d and \
+            self.create_material(
+                jwk.crv.bits,
+                d=base64.long_from_b64(jwk.d)) or \
+            self.create_material(
+                jwk.crv.bits,
+                x=base64.long_from_b64(jwk.x),
+                y=base64.long_from_b64(jwk.y),)
+
+    @property
+    def block_size(self):
+        return int(ceil(self.length / 8.0))
 
     @property
     def public_jwk(self):
-        key = self.public_key
-        if not key:
-            return None
-        jwk = Jwk(
-            kty=KeyTypeEnum.EC,
-            crv=CurveEnum.create("P-{:d}".format(key._pub[0])),
-            x=base64.long_to_b64(key._pub[1][0]),
-            y=base64.long_to_b64(key._pub[1][1]),
-        )
-        return jwk
+        crv, x, y = self.public_key_tuple
+        if crv:
+            return Jwk(
+                kty=KeyTypeEnum.EC,
+                crv=CurveEnum("P-{:d}".format(crv)),
+                x=base64.long_to_b64(x),
+                y=base64.long_to_b64(y),
+            )
 
     @property
     def private_jwk(self):
         jwk = self.public_jwk
         if jwk:
-            jwk.d = base64.long_to_b64(self.material._priv[1])
+            crv, d = self.private_key_tuple
+            jwk.d = base64.long_to_b64(d)
         return jwk
 
     def agreement_to(self, other_key, in_bytes=True):
-        pri = self.private_key
-        if pri is None:
-            raise Exception("no private key")
-
-        pub = other_key.public_key
-        _crv = curve_parameter(pri._priv[0])
-        z = dhZ(_crv, pub._pub[1], pri._priv[1])
-
+        z = self.dhZ(other_key.public_key, self.private_key)
         if in_bytes:
             return long_to_bytes(z, self.block_size)
         return z
@@ -153,13 +178,13 @@ class EcdsaSigner(object):
         )
 
     @classmethod
-    def encode_signature(cls, sigtuple, block_size=None):
+    def encode_signature(cls, signature, block_size=None):
         '''
-        :param cls:
-        :param tuple sigtuple: signagure tuple(r, s)
-        :param int block_size: Key block size to pad "\00"s
+            :param cls:
+            :param tuple signature: signagure tuple (r, s)
+            :param int block_size: Key block size to pad "\00"s
         '''
-        r, s = sigtuple
+        r, s = signature
         sig = "".join([
             long_to_bytes(r, block_size),
             long_to_bytes(s, block_size),
@@ -182,9 +207,7 @@ class EcdsaSigner(object):
     def sign_to_tuple(cls, jwk, data):
         assert jwk.key is not None and jwk.key.is_private
         dig_long = cls.longdigest(data)
-        r, s = ecdsa.sign(dig_long,
-                          jwk.key.private_key._priv)
-        return (r, s)
+        return jwk.key.sign_longdigest(dig_long)
 
     @classmethod
     def verify_from_tuple(cls, jwk, data, sig_in_tuple):
@@ -192,8 +215,7 @@ class EcdsaSigner(object):
         assert type(sig_in_tuple) == tuple
 
         dig_long = cls.longdigest(data)
-        return ecdsa.verify(dig_long, sig_in_tuple,
-                            jwk.key.public_key._pub)
+        return jwk.key.verify_logndigest(dig_long, sig_in_tuple)
 
     @classmethod
     def sign(cls, jwk, data):
@@ -229,7 +251,7 @@ class ES512(EcdsaSigner):
 # AlgorithmID || PartyUInfo || PartyVInfo || SuppPubInfo
 
 def other_info(alg, pu, pv, klen):
-    return ''.join([
+    return b('').join([
         pack("!I", len(alg)), alg,
         pack("!I", len(pu)), pu,
         pack("!I", len(pv)), pv,
@@ -243,7 +265,7 @@ def ConcatKDF(agr, dklen, oi, digest_method=SHA256):
     # Digest source
     # counter(in bytes), agreement(in bytes), otherinfo
     def _src(cbn):
-        return "".join([cbn, agr, oi])
+        return b("").join([cbn, agr, oi])
 
     from math import ceil
     from struct import pack
@@ -302,7 +324,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
             cek, iv = enc.encryptor.create_key_iv()
 
         #: parmeters for ECDH
-        epk = Jwk.generate(kty=KeyTypeEnum.EC)
+        epk = Jwk.generate(kty=KeyTypeEnum.EC)      # new adhoc key
         agr = epk.key.agreement_to(jwk.key)
         klen = cls.digest_key_bitlength(enc)
         algid = jwe.alg.value if cls._KEY_WRAP else enc.value
@@ -318,7 +340,7 @@ class EcdhKeyEncryotor(BaseKeyEncryptor):
 
     @classmethod
     def agree(cls, enc, jwk, jwe, cek_ci, *args, **kwargs):
-        agr = jwk.key.agreement_to(jwe.epk.key)  #: epk.key == public
+        agr = jwk.key.agreement_to(jwe.epk.key)  # epk.key == public
         klen = cls.digest_key_bitlength(enc)
         algid = jwe.alg.value if cls._KEY_WRAP else enc.value
         other_info = cls.other_info(algid, jwe.apu, jwe.apv, klen)

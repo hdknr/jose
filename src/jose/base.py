@@ -47,7 +47,7 @@ class BaseObjectSerializer(json.JSONEncoder):
                 vals = obj._customs.copy()
             else:
                 vals = {}
-            vals.update(obj.__dict__)
+            vals.update(getattr(obj, '__dict__', {}))
             return dict([(k, v) for k, v in vals.items()
                          if k not in ex and not k.startswith('_') and v])
 

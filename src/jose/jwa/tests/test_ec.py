@@ -1,58 +1,64 @@
 # -*- coding: utf-8 -*-
-
+from __future__ import print_function
 import unittest
 from jose.utils import base64
+from six import b
 
 
 class TestEcEcc(unittest.TestCase):
 
     def test_generate(self):
-        from ecc.Key import Key
+        def hexdigest(digester, data):
+            import hashlib
+            return hashlib.new(digester, data).hexdigest()
 
-        pri = Key.generate(521)
-        self.assertTrue(isinstance(pri, Key))
-        self.assertTrue(pri.private())
+        def longdigest(digester, data):
+            return int(hexdigest(digester, data), 16)
 
-        pub = Key.decode(pri.encode())
-        self.assertTrue(isinstance(pub, Key))
-        self.assertFalse(pub.private())
+        from ecdsa.keys import SigningKey, VerifyingKey
+        from ecdsa.curves import NIST521p
 
-        msg = "hello, it's me."
-        sig = pri.sign(msg, hashfunc='sha512')  # default sha256
-        self.assertTrue(pub.verify(msg, sig, hashfunc='sha512'))
+        pri = SigningKey.generate(curve=NIST521p)
+        pub = pri.get_verifying_key()
+        self.assertTrue(isinstance(pub, VerifyingKey))
+
+        data = 'what a wonderfull world.'
+        digest = longdigest('sha256', b(data))
+
+        sig = pri.sign_number(digest)
+        self.assertTrue(isinstance(sig, tuple))
+        self.assertEqual(len(sig), 2)
+
+        from ecdsa.ecdsa import Signature
+        sigobj = Signature(*sig)        # (r, s)
+        self.assertTrue(pub.pubkey.verifies(digest, sigobj))
 
     def test_dhZ(self):
-        from ecc.Key import Key
+        from ecdsa.keys import SigningKey   # VerifyingKey
+        from ecdsa.curves import NIST521p
 
         # Party V(recepient) declares a satic key pair
-        curve_bits = 521
-        v_stc = Key.generate(curve_bits)
+        curve = NIST521p
+        v_stc = SigningKey.generate(curve=curve)
 
-        # and advertise to Party U(Sender)
-        v_pub = Key.decode(v_stc.encode())
+        # and advertise to Party U(Sender) ( U <--(pub key)-- V)
+        v_pub = v_stc.get_verifying_key()
+        self.assertEqual(v_pub.curve, curve)
+        print(v_pub.curve)
 
         # Party U provides a ephemeral key
-        u_epk = Key.generate(v_pub._pub[0])
+        u_epk = SigningKey.generate(curve=v_pub.curve)
 
-        # Getting NIST Curve
-        from ecc.curves import get_curve
-        from ecc.elliptic import mulp
+        from jose.jwa import ec
+        # Compute ECDH as shared secret
+        # This shared secret itself is NOT have to be exchanged.
+        shared_secret_u = ec.ecdsa_dhZ(v_pub, u_epk)
 
-        _curve = lambda bits:  dict(
-            zip(('bits', 'p', 'N', 'a', 'b', 'G'),
-                get_curve(bits)))
-        # Compute ECDH
-        _dhZ = lambda crv, pub, pri: mulp(
-            crv['a'], crv['b'], crv['p'], pub, pri)[0]
+        # Party V recive Epemeral Public Key ( U --(pub key)--> V)
+        v_epk = u_epk.get_verifying_key()
 
-        # Party U compute
-        u_crv = _curve(u_epk._priv[0])
-        shared_secret_u = _dhZ(u_crv, v_pub._pub[1], u_epk._priv[1])
-
-        # Party V recive Epemeral Public Key
-        v_epk = Key.decode(u_epk.encode())
         # Party V compute
-        shared_secret_v = _dhZ(u_crv, v_epk._pub[1], v_stc._priv[1])
+        shared_secret_v = ec.ecdsa_dhZ(v_epk, v_stc)
 
         # Secrete Agreeed!
         self.assertEqual(shared_secret_u, shared_secret_v)
@@ -79,54 +85,58 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         }
 
         import re
-        _to_pub = lambda km: (
-            int(re.search(r"P-(\d+)$", "P-256").group(1)),
-            (base64.long_from_b64(km['x']),
-             base64.long_from_b64(km['y']))
-        )
-        _to_pri = lambda km: (
-            int(re.search(r"P-(\d+)$", "P-256").group(1)),
-            base64.long_from_b64(km['d'])
+
+        def _to_pub(km):
+            return (
+                int(re.search(r"P-(\d+)$", km['crv']).group(1)),
+                (base64.long_from_b64(km['x']),
+                 base64.long_from_b64(km['y'])),
+            )
+
+        def _to_pri(km):
+            return (
+                int(re.search(r"P-(\d+)$", km['crv']).group(1)),
+                base64.long_from_b64(km['d']),
+            )
+
+        pub_tuple = _to_pub(v_stc_material)
+        pri_tuple = _to_pri(v_stc_material)
+
+        import pydoc
+        curve = pydoc.locate('ecdsa.curves.NIST{0}p'.format(pub_tuple[0]))
+
+        from ecdsa import (
+            SigningKey, VerifyingKey,
+            ellipticcurve as ec)
+
+        x, y = pub_tuple[1]
+        v_pub = VerifyingKey.from_public_point(
+            ec.Point(curve.curve, x, y, curve.order),
+            curve,
         )
 
-        from ecc.Key import Key
-        v_stc = Key(
-            public_key=_to_pub(v_stc_material),
-            private_key=_to_pri(v_stc_material)
-        )
-
-        v_pub = Key.decode(v_stc.encode())
+        v_stc = SigningKey.from_secret_exponent(pri_tuple[1], curve)
 
         # Party U provides a ephemeral key
-        u_epk = Key(
-            public_key=_to_pub(u_epk_material),
-            private_key=_to_pri(u_epk_material)
-        )
+        pub_tuple = _to_pub(u_epk_material)
+        pri_tuple = _to_pri(u_epk_material)
 
-        # Getting NIST Curve
-        from ecc.curves import get_curve
-        from ecc.elliptic import mulp
+        x, y = pub_tuple[1]
+        u_epk = SigningKey.from_secret_exponent(pri_tuple[1], curve)
 
-        _curve = lambda bits:  dict(
-            zip(('bits', 'p', 'N', 'a', 'b', 'G'),
-                get_curve(bits)))
-
-        # Compute ECDH
-        _dhZ = lambda crv, pub, pri: mulp(
-            crv['a'], crv['b'], crv['p'], pub, pri)[0]
+        from jose.jwa.ec import ecdsa_dhZ
 
         # Party U compute
-        u_crv = _curve(u_epk._priv[0])
-        shared_secret_u = _dhZ(u_crv, v_pub._pub[1], u_epk._priv[1])
-        print "@@@ CURV", u_crv, ":", shared_secret_u
+        shared_secret_u = ecdsa_dhZ(v_pub, u_epk)
 
-        print "Aggreement:", base64.long_to_b64(shared_secret_u)
+        print("Aggreement:", base64.long_to_b64(shared_secret_u))
 
         from Crypto.Util.number import long_to_bytes
         from math import ceil
 
-        block_size = int(ceil(u_epk._priv[0] / 8.0))
+        block_size = int(ceil(pub_tuple[0] / 8.0))
         # bit number(512 )  / 8 -> octets
+
         Zu = long_to_bytes(shared_secret_u, block_size)
 
         Z_jwa = [158, 86, 217, 29, 129, 113, 53,
@@ -135,25 +145,27 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
                  128, 106, 72, 246, 218, 167, 121,
                  140, 254, 144, 196]
 
-        self.assertEqual([ord(i) for i in Zu], Z_jwa)
+        self.assertEqual([i for i in Zu], Z_jwa)
 
         # Other Information used in Concat KDF
         # AlgorithmID || PartyUInfo || PartyVInfo || SuppPubInfo
         from struct import pack
-        _otherInfo = lambda alg, pu, pv, klen: ''.join([
-            pack("!I", len(alg)),
-            alg,
-            pack("!I", len(pu)),
-            pu,
-            pack("!I", len(pv)),
-            pv,
-            pack("!I", klen),
-        ])
+
+        def _otherInfo(alg, pu, pv, klen):
+            return b('').join([
+                pack("!I", len(alg)),
+                alg,
+                pack("!I", len(pu)),
+                pu,
+                pack("!I", len(pv)),
+                pv,
+                pack("!I", klen),
+            ])
 
         oi_u = _otherInfo(
-            "A128GCM",
-            "Alice",
-            "Bob",
+            b("A128GCM"),
+            b("Alice"),
+            b("Bob"),
             16 * 8,     # A128GCM
         )
 
@@ -166,15 +178,16 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             66, 111, 98,
             0, 0, 0, 128]
 
-        self.assertEqual([ord(i) for i in oi_u], oi_jwa)
+        self.assertEqual([i for i in oi_u], oi_jwa)
 
         # Coccat KDF : NIST defines SHA256
         from Crypto.Hash import SHA256
 
         def _ConcatKDF(Z, dkLen, otherInfo,
                        digest_method=SHA256):
-            _src = lambda counter_bytes: "".join([
-                counter_bytes, Z, otherInfo])
+
+            def _src(counter_bytes):
+                return b("").join([counter_bytes, Z, otherInfo])
 
             from math import ceil
             from struct import pack
@@ -192,10 +205,8 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         _derived_key_u = _ConcatKDF(Zu, 16 * 8, oi_u)
 
         # Party V recive Epemeral Public Key
-        v_epk = Key.decode(u_epk.encode())
-        Zv = long_to_bytes(
-            _dhZ(u_crv, v_epk._pub[1], v_stc._priv[1]),
-            block_size)
+        v_epk = u_epk.get_verifying_key()
+        Zv = long_to_bytes(ecdsa_dhZ(v_epk, v_stc), block_size)
 
         _derived_key_v = _ConcatKDF(Zv, 16 * 8, oi_u)
 
@@ -205,14 +216,15 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             86, 170, 141, 234, 248, 35, 109, 32,
             92, 34, 40, 205, 113, 167, 16, 26]
 
-        self.assertEqual([ord(i) for i in _derived_key_u], kd_jwa)
+        self.assertEqual([i for i in _derived_key_u], kd_jwa)
 
-        self.assertEqual("VqqN6vgjbSBcIijNcacQGg",
+        self.assertEqual(b("VqqN6vgjbSBcIijNcacQGg"),
                          base64.base64url_encode(_derived_key_u))
 
     def test_ecdh_impl(self):
         '''
 https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
+        python -m test_ec -q TestEcEcc.test_ecdh_impl
         '''
 
         v_stc_material = {
@@ -244,9 +256,9 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
                  128, 106, 72, 246, 218, 167, 121,
                  140, 254, 144, 196]
 
-        self.assertEqual([ord(i) for i in Zu], Z_jwa)
+        self.assertEqual([i for i in Zu], Z_jwa)
         self.assertEqual(base64.base64url_encode(Zu),
-                         'nlbZHYFxNdNyg0KDv4QmnPsxbqPagGpI9tqneYz-kMQ')
+                         b('nlbZHYFxNdNyg0KDv4QmnPsxbqPagGpI9tqneYz-kMQ'))
 
         from jose.jwe import Jwe
         from jose.jwa.ec import ECDH_ES
@@ -257,7 +269,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         algid = jwe.enc.value
         klen = ECDH_ES.digest_key_bitlength(jwe.enc)
 
-        oi_u = ECDH_ES.other_info(algid, b'Alice', b'Bob', klen)
+        oi_u = ECDH_ES.other_info(b(algid), b('Alice'), b('Bob'), klen)
         oi_jwa = [
             0, 0, 0, 7,
             65, 49, 50, 56, 71, 67, 77,
@@ -267,10 +279,9 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             66, 111, 98,
             0, 0, 0, 128]
 
-        self.assertEqual([ord(i) for i in oi_u], oi_jwa)
+        self.assertEqual([i for i in oi_u], oi_jwa)
 
-
-        #: Derive Key for ECDH Agreement
+        # Derive Key for ECDH Agreement
         _derived_key_u, cek_ci_u = ECDH_ES.create_key(Zu, klen, oi_u, None)
 
         self.assertIsNone(cek_ci_u)
@@ -288,8 +299,8 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             92, 34, 40, 205, 113, 167, 16, 26]
 
         self.assertEqual(len(_derived_key_v), len(kd_jwa))
-        self.assertEqual([ord(i) for i in _derived_key_u], kd_jwa)
-        self.assertEqual("VqqN6vgjbSBcIijNcacQGg",
+        self.assertEqual([i for i in _derived_key_u], kd_jwa)
+        self.assertEqual(b("VqqN6vgjbSBcIijNcacQGg"),
                          base64.base64url_encode(_derived_key_u))
 
     def test_jwk(self):
@@ -310,44 +321,46 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
 
         pri_jwk = key.private_jwk
         pub_jwk = key.public_jwk
-        print pri_jwk.to_json()
-        print pub_jwk.to_json()
+        print(pri_jwk.to_json())
+        print(pub_jwk.to_json())
         self.assertEqual(pri_jwk.n, pub_jwk.n)
         self.assertEqual(pri_jwk.e, pub_jwk.e)
         self.assertEqual(pub_jwk.d, '')
 
-        print pub_jwk.to_json()
+        print(pub_jwk.to_json())
         pub_new = KeyTypeEnum.EC.create_key(jwk=pub_jwk)
         pri_new = KeyTypeEnum.EC.create_key(jwk=pri_jwk)
-        self.assertEqual(key.public_tuple, pub_new.public_tuple)
-        self.assertEqual(key.private_tuple, pri_new.private_tuple)
+        self.assertEqual(key.public_key_tuple, pub_new.public_key_tuple)
+        self.assertEqual(key.private_key_tuple, pri_new.private_key_tuple)
 
         # Signature
-        msg = "hello, it's me."
-        signature_new = pri_new.material.sign(msg, 'sha256')
-        print type(signature_new)
+        msg = b("hello, it's me.")
+        signature_new = pri_new.material.sign(msg)
+        print(type(signature_new))
 
-        #Verify
+        # Verify
         self.assertTrue(
-            pub_new.material.verify(msg, signature_new))
+            pub_new.material.verify(signature_new, msg))
 
     def test_jws_appendix_a4(self):
         header_str = '{"alg":"ES512"}'
         header_oct = [
             123, 34, 97, 108, 103, 34,
             58, 34, 69, 83, 53, 49, 50, 34, 125]
-        self.assertEqual([ord(i) for i in header_str], header_oct)
+        self.assertEqual([i for i in b(header_str)], header_oct)
 
         header_b64 = 'eyJhbGciOiJFUzUxMiJ9'
-        self.assertEqual(base64.base64url_encode(header_str), header_b64)
+        self.assertEqual(
+            base64.base64url_encode(header_str), b(header_b64))
 
         payload_str = "Payload"
         payload_oct = [
             80, 97, 121, 108, 111, 97, 100,
         ]
-        self.assertEqual([ord(i) for i in payload_str], payload_oct)
+        self.assertEqual([i for i in b(payload_str)], payload_oct)
         payload_b64 = "UGF5bG9hZA"
-        self.assertEqual(base64.base64url_encode(payload_str), payload_b64)
+        self.assertEqual(
+            base64.base64url_encode(payload_str), b(payload_b64))
 
         signing_input_b64 = ".".join([header_b64, payload_b64])
         signing_input_oct = [
@@ -355,7 +368,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             105, 79, 105, 74, 70, 85, 122, 85,
             120, 77, 105, 74, 57, 46, 85, 71,
             70, 53, 98, 71, 57, 104, 90, 65]
-        self.assertEqual([ord(i) for i in signing_input_b64],
+        self.assertEqual([i for i in b(signing_input_b64)],
                          signing_input_oct)
 
         jwk_str = '''
@@ -369,43 +382,41 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         from jose.jwk import Jwk
         jwk = Jwk.from_json(jwk_str)
 
-        from ecc.encoding import dec_long, enc_long
-        from ecc.ecdsa import sign, verify
         import hashlib
 
-
         # Sign
-        pri = jwk.key.private_key
+        pri = jwk.key.private_key_tuple
 
-        self.assertEqual(pri._priv[0], 521)
+        self.assertEqual(pri[0], 521)
         self.assertEqual(
-            pri._priv[1],
+            pri[1],
             base64.long_from_b64(
-                'AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C')
+                'AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C')  # NOQA
         )
 
-        digest = dec_long(hashlib.new('sha512',
-                                      signing_input_b64).digest())
-        signature = sign(digest, pri._priv)
+        digest = int(hashlib.new('sha512',
+                                 b(signing_input_b64)).hexdigest(), 16)
+        signature = jwk.key.sign_longdigest(digest)
         self.assertEqual(type(signature), tuple)
         #: This signature changes everytime.
-        print signature
+        self.assertTrue(isinstance(signature, tuple))
+        self.assertEqual(len(signature), 2)
 
         # Verify
-        pub = jwk.key.public_key
-        self.assertEqual(pub._pub[0], 521)
-        self.assertEqual(pub._pub[1][0],
+        pub = jwk.key.public_key_tuple
+        self.assertEqual(pub[0], 521)
+        self.assertEqual(pub[1],
             base64.long_from_b64(
-                "AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk"
+                "AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk"  # NOQA
             )
         )
-        self.assertEqual(pub._pub[1][1],
+        self.assertEqual(pub[2],
             base64.long_from_b64(
-                "ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2"
+                "ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2"  # NOQA
             )
         )
 
-        self.assertTrue(verify(digest, signature, pub._pub))
+        self.assertTrue(jwk.key.verify_longdigest(digest, signature))
 
         sig_jws_oct = (
             [1, 220, 12, 129, 231, 171, 194, 209, 232, 135, 233,
@@ -422,7 +433,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
              188, 222, 59, 242, 103]
         )
 
-        sig_jws_b64 =''.join([
+        sig_jws_b64 = ''.join([
             'AdwMgeerwtHoh-l192l60hp9wAHZFVJbLfD_UxMi70cwnZOYaRI1bKPWROc-mZZq',
             'wqT2SI-KGDKB34XO0aw_7XdtAG8GaSwFKdCAPZgoXD2YBJZCPEX3xKpRwcdOO8Kp',
             'EHwJjyqOgzDO7iKvU8vcnwNrmxYbSW9ERBXukOXolLzeO_Jn',
@@ -434,7 +445,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         sig_jws_tuple = (bytes_to_long(sig_jws_str[:66]),
                          bytes_to_long(sig_jws_str[66:]),)
 
-        self.assertTrue(verify(digest, sig_jws_tuple, pub._pub))
+        self.assertTrue(jwk.key.verify_longdigest(digest, sig_jws_tuple))
 
 
 class TestEcKeyEcdsa(unittest.TestCase):
@@ -479,24 +490,25 @@ class TestEcKeyEcdsa(unittest.TestCase):
         from hashlib import sha512
         from uuid import uuid1
         rnd = uuid1().int
-        msg = "hello, it's me."
+        msg = "hello, it's me.".encode('utf8')
         digest = string_to_int(sha512(msg).digest())
         signature_new = pri_new.sign(digest, rnd)
         signature_old = pri.sign(digest, rnd)
         self.assertTrue(isinstance(signature_new, Signature))
         self.assertEqual(signature_new.r, signature_old.r)
         self.assertEqual(signature_new.s, signature_old.s)
-        self.assertEqual(type(signature_new.r), long)
-        self.assertEqual(type(signature_new.s), long)
+        import six      # python3 no long
+        self.assertTrue(type(signature_new.r) in six.integer_types)
+        self.assertTrue(type(signature_new.s) in six.integer_types)
 
-        #Verify
-        print pub.verifies(digest, signature_new)
-        print pub_new.verifies(digest, signature_old)
+        # Verify
+        print(pub.verifies(digest, signature_new))
+        print(pub_new.verifies(digest, signature_old))
 
         #
-        print dir(pri_new)
-        print dir(pub_new)
-        print dir(pub_new.curve)
+        print(dir(pri_new))
+        print(dir(pub_new))
+        print(dir(pub_new.curve))
 
     def test_exchage(self):
         from ecdsa import SigningKey, NIST521p
@@ -513,7 +525,7 @@ class TestEcKeyEcdsa(unittest.TestCase):
         alice_pub_point = alice_pub.point
         bob_pub_point = bob_pub.point
 
-        print alice_pub_point, bob_pub_point
+        print(alice_pub_point, bob_pub_point)
 
 
 if __name__ == '__main__':

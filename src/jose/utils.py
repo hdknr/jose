@@ -9,20 +9,21 @@ from importlib import import_module
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 import time
 import struct
+from six import b, text_type
 
 
 def _ss(str_data):
-    if isinstance(str_data, unicode):
+    if isinstance(str_data, (str, text_type)):
         return str_data.encode('utf8')
     return str_data
 
 
 def _b64url_encode(src):
-    return src and base64.urlsafe_b64encode(src).replace('=', '')
+    return src and base64.urlsafe_b64encode(_ss(src)).replace(b('='), b(''))
 
 
 def _b64url_decode(src):
-    return src and base64.urlsafe_b64decode(_ss(src) + '=' * (len(src) % 4))
+    return src and base64.urlsafe_b64decode(_ss(src) + b('=') * (len(src) % 4))
 
 base64.base64url_encode = _b64url_encode
 base64.base64url_decode = _b64url_decode

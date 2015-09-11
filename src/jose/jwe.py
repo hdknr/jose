@@ -1,4 +1,4 @@
-from crypto import Crypto, CryptoMessage
+from jose.crypto import Crypto, CryptoMessage
 from jose.jwa.encs import EncEnum, KeyEncEnum
 from jose.base import BaseEnum, BaseObject, JoseException
 from jose.jwk import Jwk
@@ -6,7 +6,11 @@ from jose.utils import merged, _BD, _BE
 import re
 import traceback
 import zlib
-import exceptions
+
+try:
+    from exceptions import AttributeError
+except:
+    pass
 
 # http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption-23#section-7.1
 _component = [
@@ -68,18 +72,18 @@ class Jwe(Crypto):
 
     def __init__(self, **kwargs):
         super(Jwe, self).__init__(**kwargs)
-        if isinstance(self.alg, basestring):
-            self.alg = KeyEncEnum.create(self.alg)
-        if isinstance(self.zip, basestring):
-            self.zip = ZipEnum.create(self.zip)
-        if isinstance(self.enc, basestring):
-            self.enc = EncEnum.create(self.enc)
+        self.alg = self.alg and KeyEncEnum(self.alg)
+        self.zip = self.zip and ZipEnum(self.zip)
+        print("@@@@Jwe:", self.enc)
+        self.enc = self.enc and EncEnum(self.enc)
+
         if isinstance(self.epk, dict):
             self.epk = Jwk(**self.epk)
-        if isinstance(self.apu, unicode):
-            self.apu = self.apu.encode('utf8')
-        if isinstance(self.apv, unicode):
-            self.apv = self.apv.encode('utf8')
+
+#         if isinstance(self.apu, unicode):
+#             self.apu = self.apu.encode('utf8')
+#         if isinstance(self.apv, unicode):
+#             self.apv = self.apv.encode('utf8')
 
     @classmethod
     def from_json(cls, json_str, base=None):
@@ -130,7 +134,8 @@ class Recipient(BaseObject):
     def provide_key(self, jwk, cek=None, iv=None, jwe=None):
         jwe = Jwe.merge(self.header, jwe)
 
-        assert jwk and isinstance(jwk, Jwk), "Recipient's Jwk must be specified."
+        assert jwk and isinstance(jwk, Jwk), \
+            "Recipient's Jwk must be specified."
         assert jwe
         assert jwe.enc
         assert jwe.alg
@@ -249,7 +254,6 @@ class Message(CryptoMessage):
             messsage's CEK and IV
         '''
         header = self.header(jwe=recipient.header)
-        print "@@@@@", type(header)
         key = header.load_key(recipient.recipient)
         assert key is not None, "Recipient's key MUST be loaded."
 
@@ -276,7 +280,7 @@ class Message(CryptoMessage):
                 self.cek = recipient.agree_key(jwk, jwe=header)
                 return self.cek
             else:
-                #:TODO log
+                # TODO log
                 pass
 
         return None
@@ -345,9 +349,8 @@ class Message(CryptoMessage):
             #: fall to  compact serialization
             pass
 
-        except Exception, e:
-            print ">>>>>>", type(e)
-            print traceback.format_exc()
+        except:
+            print(traceback.format_exc())
 
         return cls.parse_token(token, sender, receiver)
 
@@ -361,7 +364,7 @@ class Message(CryptoMessage):
         m = {}
         try:
             m = _compact.search(token).groupdict()
-        except exceptions.AttributeError:
+        except AttributeError:
             raise NotJweException(
                 'Token is not JWE', None, token, sender, recipient)
 

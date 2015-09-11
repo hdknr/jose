@@ -1,3 +1,4 @@
+from __future__ import print_function
 from Crypto.Util.number import long_to_bytes, bytes_to_long
 from aes_gcm import AES_GCM, InvalidTagException
 from jose.base import BaseContentEncryptor, BaseKeyEncryptor
@@ -104,9 +105,9 @@ if __name__ == '__main__':
         cek, iv = enc.create_key_iv()
         assert len(cek) == enc._KEY_LEN
         assert len(iv) == enc._IV_LEN
-        print enc.__name__
-        print "CEK =", base64.urlsafe_b64encode(cek)
-        print "IV=", base64.urlsafe_b64encode(iv)
+        print(enc.__name__)
+        print("CEK =", base64.urlsafe_b64encode(cek))
+        print("IV=", base64.urlsafe_b64encode(iv))
 
     import itertools
     from jose.jwk import Jwk
@@ -119,12 +120,12 @@ if __name__ == '__main__':
         )
         cek, iv, cek_ci, kek = jwe.provide_key(jwk)
 
-        print "alg=", a, "enc=", e
-        print "CEK=", base64.base64url_encode(cek)
-        print "IV=", base64.base64url_encode(iv)
-        print "CEK_CI=", base64.base64url_encode(cek_ci)
-        print "Jwe.iv=",  jwe.iv
-        print "Jwe.tag=",  jwe.tag
+        print("alg=", a, "enc=", e)
+        print("CEK=", base64.base64url_encode(cek))
+        print("IV=", base64.base64url_encode(iv))
+        print("CEK_CI=", base64.base64url_encode(cek_ci))
+        print("Jwe.iv=",  jwe.iv)
+        print("Jwe.tag=",  jwe.tag)
 
         cek2 = jwe.agree_key(jwk, cek_ci)
-        print "CEK AGREED=", base64.base64url_encode(cek2)
+        print("CEK AGREED=", base64.base64url_encode(cek2))

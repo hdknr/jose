@@ -1,30 +1,28 @@
-from jose.base import AlgorithmBaseEnum
 from jose.jwa import keys
+from enum import Enum
 
-__all__ = ['SigDict', 'SigEnum', ]
-#
-SigDict = dict(
-    HS256='HS256',
-    HS384='HS384',
-    HS512='HS512',
-
-    RS256='RS256',
-    RS384='RS384',
-    RS512='RS512',
-
-    PS256='PS256',
-    PS384='PS384',
-    PS512='PS512',
-
-    ES256='ES256',
-    ES384='ES384',
-    ES512='ES512',
-
-    NONE='none',
-)
+__all__ = ['SigEnum', 'SigDict', ]
 
 
-class SigAlgorithmEnum(AlgorithmBaseEnum):
+class SigEnum(Enum):
+    HS256 = 'HS256'
+    HS384 = 'HS384'
+    HS512 = 'HS512'
+
+    RS256 = 'RS256'
+    RS384 = 'RS384'
+    RS512 = 'RS512'
+
+    PS256 = 'PS256'
+    PS384 = 'PS384'
+    PS512 = 'PS512'
+
+    ES256 = 'ES256'
+    ES384 = 'ES384'
+    ES512 = 'ES512'
+
+    NONE = 'none'
+
     @property
     def signer(self):
         import rsa
@@ -44,5 +42,4 @@ class SigAlgorithmEnum(AlgorithmBaseEnum):
             P=keys.KeyTypeEnum.RSA,
             E=keys.KeyTypeEnum.EC,)[self.name[0]]
 
-
-SigEnum = type('SigEnum', (SigAlgorithmEnum,), SigDict)
+SigDict = dict((i.name, i.name) for i in SigEnum)

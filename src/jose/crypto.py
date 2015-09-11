@@ -44,8 +44,7 @@ class Crypto(BaseObject):
 
     def __init__(self, **kwargs):
         super(Crypto, self).__init__(**kwargs)
-        if isinstance(self.alg, basestring):
-            self.alg = SigEnum.create(self.alg) or KeyEncEnum(self.alg)
+        self.alg = self.alg and (SigEnum(self.alg) or KeyEncEnum(self.alg))
 
     def load_key(self, owner):
         '''
@@ -63,10 +62,10 @@ class Crypto(BaseObject):
         if key in self._fields and value:
             setattr(self, key, value)
 
-    @property 
+    @property
     def key_type(self):
         return self.alg.key_type
-    
+
     @classmethod
     def from_token(cls, token):
         return cls.from_json(_BD(token.split('.')[0]))
@@ -74,7 +73,7 @@ class Crypto(BaseObject):
 
 class CryptoMessage(BaseObject):
     def __init__(self, sender=None, receiver=None, *args, **kwargs):
-        ''' 
+        '''
             :type sender: KeyOwner or None
             :type receiver: KeyOwner or None
         '''

@@ -67,14 +67,10 @@ class Jwk(BaseObject, keys.RSA, keys.EC, keys.Symmetric):
             self._key = key
             self._key.to_jwk(self)
 
-        if isinstance(self.kty, basestring):
-            self.kty = keys.KeyTypeEnum.create(self.kty)
-
-        if isinstance(self.use, basestring):
-            self.use = UseEnum.create(self.use)
-
-        if isinstance(self.crv, basestring):
-            self.crv = keys.CurveEnum.create(self.crv)
+        self.kty = self.kty and keys.KeyTypeEnum(self.kty)
+        self.use = self.use and UseEnum(self.use)
+        print("@@@@@@ Jwk crv", self.crv)
+        self.crv = self.crv and keys.CurveEnum(self.crv)
 
         if isinstance(self.key_ops, list):
             self.key_ops = [KeyOpsEnum(**ops)
