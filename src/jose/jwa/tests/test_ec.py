@@ -5,6 +5,11 @@ from jose.utils import base64
 from six import b
 
 
+def _ilist(src):
+    return list(
+        map(lambda i: i if isinstance(i, int) else ord(i[:1]), src))
+
+
 class TestEcEcc(unittest.TestCase):
 
     def test_generate(self):
@@ -145,7 +150,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
                  128, 106, 72, 246, 218, 167, 121,
                  140, 254, 144, 196]
 
-        self.assertEqual([ord(i[:1]) for i in Zu], Z_jwa)
+        self.assertEqual(_ilist(Zu), Z_jwa)
 
         # Other Information used in Concat KDF
         # AlgorithmID || PartyUInfo || PartyVInfo || SuppPubInfo
@@ -178,7 +183,9 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             66, 111, 98,
             0, 0, 0, 128]
 
-        self.assertEqual([ord(i[:1]) for i in oi_u], oi_jwa)
+        print(">>>>>>>", type(oi_u))
+        print("<<<<<<<", oi_u)
+        self.assertEqual(_ilist(oi_u), oi_jwa)
 
         # Coccat KDF : NIST defines SHA256
         from Crypto.Hash import SHA256
@@ -216,7 +223,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             86, 170, 141, 234, 248, 35, 109, 32,
             92, 34, 40, 205, 113, 167, 16, 26]
 
-        self.assertEqual([ord(i[:1]) for i in _derived_key_u], kd_jwa)
+        self.assertEqual(_ilist(_derived_key_u), kd_jwa)
 
         self.assertEqual(b("VqqN6vgjbSBcIijNcacQGg"),
                          base64.base64url_encode(_derived_key_u))
@@ -256,7 +263,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
                  128, 106, 72, 246, 218, 167, 121,
                  140, 254, 144, 196]
 
-        self.assertEqual([ord(i[:1]) for i in Zu], Z_jwa)
+        self.assertEqual(_ilist(Zu), Z_jwa)
         self.assertEqual(base64.base64url_encode(Zu),
                          b('nlbZHYFxNdNyg0KDv4QmnPsxbqPagGpI9tqneYz-kMQ'))
 
@@ -279,7 +286,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             66, 111, 98,
             0, 0, 0, 128]
 
-        self.assertEqual([ord(i[:1]) for i in oi_u], oi_jwa)
+        self.assertEqual(_ilist(oi_u), oi_jwa)
 
         # Derive Key for ECDH Agreement
         _derived_key_u, cek_ci_u = ECDH_ES.create_key(Zu, klen, oi_u, None)
@@ -299,7 +306,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             92, 34, 40, 205, 113, 167, 16, 26]
 
         self.assertEqual(len(_derived_key_v), len(kd_jwa))
-        self.assertEqual([ord(i[:1]) for i in _derived_key_u], kd_jwa)
+        self.assertEqual(_ilist(_derived_key_u), kd_jwa)
         self.assertEqual(b("VqqN6vgjbSBcIijNcacQGg"),
                          base64.base64url_encode(_derived_key_u))
 
@@ -347,7 +354,9 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         header_oct = [
             123, 34, 97, 108, 103, 34,
             58, 34, 69, 83, 53, 49, 50, 34, 125]
-        self.assertEqual([ord(i[:1]) for i in b(header_str)], header_oct)
+        self.assertEqual(
+            [isinstance(i, int) and i or ord(i[:1]) for i in b(header_str)],
+            header_oct)
 
         header_b64 = 'eyJhbGciOiJFUzUxMiJ9'
         self.assertEqual(
@@ -357,7 +366,10 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
         payload_oct = [
             80, 97, 121, 108, 111, 97, 100,
         ]
-        self.assertEqual([ord(i[:1]) for i in b(payload_str)], payload_oct)
+        self.assertEqual(
+            [isinstance(i, int) and i or ord(i[:1]) for i in b(payload_str)],
+            payload_oct)
+
         payload_b64 = "UGF5bG9hZA"
         self.assertEqual(
             base64.base64url_encode(payload_str), b(payload_b64))
@@ -368,8 +380,7 @@ https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-23#appendix-C
             105, 79, 105, 74, 70, 85, 122, 85,
             120, 77, 105, 74, 57, 46, 85, 71,
             70, 53, 98, 71, 57, 104, 90, 65]
-        self.assertEqual([ord(i[:1]) for i in b(signing_input_b64)],
-                         signing_input_oct)
+        self.assertEqual(_ilist(signing_input_b64), signing_input_oct)
 
         jwk_str = '''
  {"kty":"EC",
